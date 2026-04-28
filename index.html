@@ -238,6 +238,10 @@
                 "Bank's Allowed Payments:",
                 decodedPayload.ctx[0].data.allowedPaymentTypes,
               );
+              alert(
+                "Bank Allowed: " +
+                  decodedPayload.ctx[0].data.allowedPaymentTypes.join(", "),
+              );
               // FIX DIAGNOSTIC: Log paymentConfigurations to verify branding is now bound
               console.log(
                 "Payment Configurations (branding):",
