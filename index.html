@@ -227,6 +227,8 @@
 
               const rawText = await response.text();
 
+              console.log("🔥 RAW BACKEND RESPONSE:", rawText);
+
               if (!response.ok) {
                 throw new Error(
                   `Proxy Request Failed (Status: ${response.status})\n\nResponse: ${rawText}`,
