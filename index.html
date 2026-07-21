@@ -3,118 +3,76 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BAE Payments+ | Environment Router</title>
+    <title>BAE Unified Checkout – 3DS resilience harness</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script
       defer
       src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
     ></script>
   </head>
-  <body class="bg-gray-50 font-sans" x-data="cartSystem()">
-    <nav
-      class="bg-white border-b border-gray-200 p-4 sticky top-0 z-50 shadow-sm"
-    >
-      <div class="max-w-5xl mx-auto flex justify-between items-center">
-        <div class="flex items-center gap-4">
-          <h1 class="text-xl font-bold text-gray-800 italic">Payments+</h1>
+  <body class="bg-gray-50 font-sans text-gray-900" x-data="harness()">
+    <nav class="bg-white border-b border-gray-200 p-4 sticky top-0 z-50">
+      <div
+        class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4"
+      >
+        <h1 class="text-xl font-bold italic">Payments+</h1>
 
-          <div
-            @click="environment = environment === 'prod' ? 'dev' : 'prod'"
-            class="flex items-center bg-gray-200 rounded-full p-1 cursor-pointer w-32 relative h-8 select-none"
-          >
-            <div
-              class="w-1/2 text-center z-10 text-[10px] font-bold tracking-widest transition-colors duration-300"
-              :class="environment === 'prod' ? 'text-white' : 'text-gray-500'"
-            >
-              PROD
-            </div>
-            <div
-              class="w-1/2 text-center z-10 text-[10px] font-bold tracking-widest transition-colors duration-300"
-              :class="environment === 'dev' ? 'text-white' : 'text-gray-500'"
-            >
-              DEV
-            </div>
-            <div
-              class="absolute top-1 bottom-1 w-[46%] rounded-full transition-all duration-300 shadow"
-              :class="environment === 'prod' ? 'left-1 bg-green-500' : 'left-[50%] bg-blue-600'"
-            ></div>
-          </div>
-
-          <div
-            @click="currency = currency === 'JOD' ? 'USD' : 'JOD'"
-            class="flex items-center bg-gray-200 rounded-full p-1 cursor-pointer w-32 relative h-8 select-none"
-          >
-            <div
-              class="w-1/2 text-center z-10 text-[10px] font-bold tracking-widest transition-colors duration-300"
-              :class="currency === 'JOD' ? 'text-white' : 'text-gray-500'"
-            >
-              JOD
-            </div>
-            <div
-              class="w-1/2 text-center z-10 text-[10px] font-bold tracking-widest transition-colors duration-300"
-              :class="currency === 'USD' ? 'text-white' : 'text-gray-500'"
-            >
-              USD
-            </div>
-            <div
-              class="absolute top-1 bottom-1 w-[46%] rounded-full transition-all duration-300 shadow"
-              :class="currency === 'JOD' ? 'left-1 bg-gray-800' : 'left-[50%] bg-gray-800'"
-            ></div>
-          </div>
-        </div>
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-3">
           <button
-            @click="step = 'shop'"
-            class="text-sm text-gray-500 hover:text-black"
+            @click="environment = environment === 'prod' ? 'dev' : 'prod'"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white"
+            :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
+            x-text="environment.toUpperCase()"
+          ></button>
+          <button
+            @click="currency = currency === 'JOD' ? 'USD' : 'JOD'"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white bg-gray-800"
+            x-text="currency"
+          ></button>
+          <label
+            class="flex items-center gap-2 text-xs font-medium text-gray-600"
           >
-            Shop
-          </button>
-          <div class="bg-gray-100 px-3 py-1 rounded-full text-sm font-bold">
-            Cart (<span x-text="cart.length"></span>)
-          </div>
+            <input
+              type="checkbox"
+              x-model="forceManualConfirm"
+              class="accent-blue-600"
+            />
+            Force confirm step
+          </label>
         </div>
       </div>
     </nav>
 
     <main class="max-w-5xl mx-auto py-10 px-6">
-      <div x-show="step === 'shop'" class="animate-in fade-in duration-500">
-        <h2 class="text-2xl font-bold mb-8 text-gray-800">Select Services</h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- ------------------------------------------------ shop -->
+      <section x-show="step === 'shop'">
+        <h2 class="text-2xl font-bold mb-6">Select an amount</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <template x-for="product in products" :key="product.id">
             <div
-              class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition"
+              class="bg-white p-5 rounded-2xl border border-gray-200 flex flex-col justify-between"
             >
               <div>
-                <div
-                  class="w-12 h-12 bg-blue-50 text-blue-600 rounded-lg mb-4 flex items-center justify-center font-bold"
-                  x-text="currency"
-                ></div>
-                <h3
-                  class="font-bold text-lg text-gray-900"
-                  x-text="product.name"
-                ></h3>
-                <p class="text-gray-500 text-sm mt-2" x-text="product.desc"></p>
+                <h3 class="font-bold" x-text="product.name"></h3>
+                <p class="text-gray-500 text-sm mt-1" x-text="product.desc"></p>
               </div>
-              <div class="mt-8 flex justify-between items-center">
+              <div class="mt-6 flex justify-between items-center gap-2">
                 <span
                   x-show="!product.isCustom"
-                  class="font-black text-xl text-gray-900"
+                  class="font-black text-lg"
                   x-text="product.price.toFixed(2)"
                 ></span>
-
-                <div x-show="product.isCustom" class="flex items-center">
-                  <input
-                    type="number"
-                    min="0.10"
-                    step="0.10"
-                    x-model.number="customAmount"
-                    class="w-24 px-2 py-1 border-2 border-gray-200 rounded-lg font-black text-xl text-gray-900 focus:border-blue-600 focus:outline-none transition"
-                  />
-                </div>
-
+                <input
+                  x-show="product.isCustom"
+                  type="number"
+                  min="0.10"
+                  step="0.10"
+                  x-model.number="customAmount"
+                  class="w-20 px-2 py-1 border-2 border-gray-200 rounded-lg font-bold focus:border-blue-600 focus:outline-none"
+                />
                 <button
                   @click="addToCart(product)"
-                  class="bg-black text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-800 active:scale-95 transition"
+                  class="bg-black text-white px-4 py-2 rounded-xl text-sm font-bold active:scale-95 transition"
                 >
                   Add
                 </button>
@@ -125,394 +83,669 @@
 
         <div
           x-show="cart.length > 0"
-          class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-gray-200 px-8 py-5 rounded-3xl flex items-center gap-10"
+          class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-gray-200 px-6 py-4 rounded-3xl flex items-center gap-6"
         >
           <div>
             <p
-              class="text-xs text-gray-400 uppercase font-bold tracking-widest"
+              class="text-[10px] text-gray-400 uppercase font-bold tracking-widest"
             >
-              Total Amount
+              Total
             </p>
             <span
-              class="font-black text-2xl text-black"
+              class="font-black text-xl"
               x-text="total.toFixed(2) + ' ' + currency"
             ></span>
           </div>
           <button
-            @click="initiateCheckout()"
-            class="bg-blue-600 text-white px-10 py-3 rounded-2xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition"
+            @click="startCheckout()"
+            class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 transition"
           >
-            Checkout Now
+            Check out
           </button>
         </div>
-      </div>
+      </section>
 
-      <div
+      <!-- ------------------------------------------------ checkout -->
+      <section
         x-show="step === 'checkout'"
-        class="max-w-xl mx-auto animate-in slide-in-from-bottom-4 duration-500"
+        class="max-w-xl mx-auto"
         style="display: none"
       >
         <button
-          @click="step = 'shop'; cart = []; total = 0;"
-          class="text-gray-400 mb-6 flex items-center gap-2 hover:text-black transition"
+          @click="reset()"
+          class="text-gray-400 mb-4 text-sm hover:text-black"
         >
-          ← Reset & Return to Shop
+          ← Reset and return to shop
         </button>
 
-        <div class="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-          <div class="flex items-center gap-3 mb-2">
-            <h2 class="text-2xl font-black">Secure Checkout</h2>
+        <div
+          class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-200"
+        >
+          <div class="flex items-center gap-2 mb-4">
+            <h2 class="text-2xl font-black">Secure checkout</h2>
             <span
               class="text-[10px] font-bold px-2 py-1 rounded tracking-widest text-white"
-              :class="environment === 'prod' ? 'bg-green-500' : 'bg-blue-600'"
+              :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
               x-text="environment.toUpperCase()"
             ></span>
-            <span
-              class="text-[10px] font-bold px-2 py-1 rounded tracking-widest text-white bg-gray-800"
-              x-text="currency"
-            ></span>
           </div>
-          <div class="flex justify-between items-center mb-8 border-b pb-4">
-            <span class="text-gray-500">Amount Due:</span>
+
+          <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <span class="text-gray-500">Amount due</span>
             <span
-              class="text-xl font-bold text-blue-600"
+              class="text-xl font-bold"
               x-text="total.toFixed(2) + ' ' + currency"
             ></span>
           </div>
 
           <div
-            id="checkout-ui-wrapper"
-            class="relative min-h-[400px] border border-gray-200 rounded-2xl bg-gray-50 overflow-hidden flex flex-col items-center justify-center"
+            class="relative min-h-[320px] border border-gray-200 rounded-2xl bg-gray-50 p-3"
           >
             <div
               x-show="loading"
-              class="absolute inset-0 flex flex-col items-center justify-center bg-white/90 z-10"
+              class="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10 rounded-2xl"
             >
               <div
-                class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"
+                class="animate-spin rounded-full h-9 w-9 border-b-2 border-blue-600"
               ></div>
               <p
-                class="mt-4 text-sm font-bold text-gray-600"
+                class="mt-3 text-sm font-semibold text-gray-600"
                 x-text="loadingMessage"
               ></p>
             </div>
-            <div id="payment-selection-container" class="w-full p-2"></div>
-            <div id="payment-screen-container" class="w-full p-2"></div>
+
+            <div id="payment-selection-container" class="w-full"></div>
+            <div id="payment-screen-container" class="w-full"></div>
+          </div>
+
+          <!--
+            CRITICAL (iOS): this button is plain HTML with an inline onclick.
+            No framework, no async wrapper, no state write before up.complete().
+            WebKit only grants pop-up permission inside the same task as the tap.
+          -->
+          <button
+            id="confirm-pay-button"
+            type="button"
+            onclick="window.BaePay.confirmTap()"
+            x-show="phase === 'armed'"
+            style="display: none"
+            class="mt-5 w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg active:scale-[0.99] transition"
+          >
+            Confirm and pay
+            <span x-text="total.toFixed(2) + ' ' + currency"></span>
+          </button>
+
+          <button
+            id="resume-pay-button"
+            type="button"
+            onclick="window.BaePay.resumeTap()"
+            x-show="phase === 'stalled'"
+            style="display: none"
+            class="mt-5 w-full bg-amber-500 text-white py-4 rounded-2xl font-bold text-lg active:scale-[0.99] transition"
+          >
+            Resume verification
+          </button>
+
+          <p
+            x-show="phase === 'stalled'"
+            class="mt-3 text-sm text-amber-700"
+            style="display: none"
+          >
+            The bank's verification window did not report back. Tap resume to
+            check the result.
+          </p>
+        </div>
+
+        <!-- ------------------------------------------------ diagnostics -->
+        <div class="mt-6 bg-white border border-gray-200 rounded-2xl p-5">
+          <div class="flex justify-between items-center mb-3">
+            <h3
+              class="font-bold text-sm uppercase tracking-widest text-gray-500"
+            >
+              Diagnostics
+            </h3>
+            <button @click="copyLog()" class="text-xs font-bold text-blue-600">
+              Copy log
+            </button>
+          </div>
+          <dl class="grid grid-cols-2 gap-y-1 text-xs mb-4">
+            <dt class="text-gray-500">Engine</dt>
+            <dd class="font-mono" x-text="diag.engine"></dd>
+            <dt class="text-gray-500">Pop-up shim</dt>
+            <dd class="font-mono" x-text="diag.shim"></dd>
+            <dt class="text-gray-500">Reference</dt>
+            <dd class="font-mono break-all" x-text="reference || '—'"></dd>
+            <dt class="text-gray-500">Phase</dt>
+            <dd class="font-mono" x-text="phase"></dd>
+          </dl>
+          <div
+            class="bg-gray-900 text-gray-100 rounded-xl p-3 max-h-64 overflow-auto font-mono text-[11px] leading-relaxed"
+          >
+            <template x-for="line in log" :key="line.id">
+              <div>
+                <span class="text-gray-500" x-text="line.t + 'ms '"></span>
+                <span x-text="line.msg"></span>
+              </div>
+            </template>
           </div>
         </div>
-      </div>
+      </section>
     </main>
 
     <script>
-      function cartSystem() {
+      /* =================================================================
+       * CONFIG
+       * ================================================================= */
+      const PROXY_URL = "https://bae-api-proxy.z-kulaghsi.workers.dev";
+
+      /* =================================================================
+       * Environment detection
+       * ================================================================= */
+      const UA = navigator.userAgent;
+      const IS_IOS =
+        /iPad|iPhone|iPod/.test(UA) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      /* =================================================================
+       * Pop-up activation shim  (Issue 2)
+       * -----------------------------------------------------------------
+       * WebKit grants window.open() permission only inside the task that
+       * handled the tap. The SDK opens its 3DS window *after* an internal
+       * network round trip, so by then the grant is gone.
+       *
+       * Fix: open a blank window synchronously while we still hold the
+       * grant, then hand that same window to the SDK when it calls
+       * window.open() a moment later.
+       * ================================================================= */
+      function installOpenShim(logger) {
+        const original = window.open;
+        let placeholder = null;
+        let consumed = false;
+
+        try {
+          placeholder = original.call(window, "", "_blank");
+        } catch (e) {
+          placeholder = null;
+        }
+
+        if (!placeholder || placeholder.closed) {
+          logger("shim: browser refused the pre-opened window");
+          return { active: false, restore() {} };
+        }
+
+        try {
+          placeholder.document.write(
+            '<!doctype html><meta name="viewport" content="width=device-width">' +
+              '<body style="font-family:system-ui;display:grid;place-items:center;' +
+              'height:100vh;margin:0;color:#374151">Opening secure verification…</body>',
+          );
+        } catch (e) {
+          /* cross-origin already, harmless */
+        }
+
+        window.open = function (url, name, features) {
+          if (placeholder && !placeholder.closed && !consumed) {
+            consumed = true;
+            logger("shim: handed pre-opened window to SDK");
+            if (url) {
+              try {
+                placeholder.location.replace(url);
+              } catch (e) {
+                placeholder.location.href = url;
+              }
+            }
+            return placeholder;
+          }
+          return original.call(window, url, name, features);
+        };
+
+        const timer = setTimeout(() => {
+          if (!consumed) {
+            logger("shim: SDK used an iframe, closing unused window");
+            cleanup();
+          }
+        }, 12000);
+
+        function cleanup() {
+          clearTimeout(timer);
+          window.open = original;
+          if (placeholder && !consumed && !placeholder.closed) {
+            try {
+              placeholder.close();
+            } catch (e) {}
+          }
+        }
+
+        logger("shim: pre-opened window ready");
+        return { active: true, restore: cleanup };
+      }
+
+      /* =================================================================
+       * BaePay – everything that must stay outside the framework
+       * ================================================================= */
+      window.BaePay = {
+        up: null,
+        transientToken: null,
+        reference: null,
+        settled: false,
+        app: null,
+
+        /** Synchronous. Called straight from a native onclick. */
+        confirmTap() {
+          const app = this.app;
+          if (!this.up || !this.transientToken) return;
+
+          // 1. Pre-open the window while the tap grant is still alive.
+          const shim = IS_IOS
+            ? installOpenShim((m) => app.logLine(m))
+            : { active: false, restore() {} };
+          app.diag.shim = shim.active ? "armed" : "not needed";
+
+          // 2. up.complete() must be the FIRST thing after the shim.
+          //    No await, no state write, no fetch above this line.
+          let promise;
+          try {
+            promise = this.up.complete(this.transientToken);
+          } catch (err) {
+            shim.restore();
+            app.fail("complete() threw synchronously: " + err.message);
+            return;
+          }
+
+          // 3. Only now is it safe to touch the UI.
+          app.onCompleteStarted();
+          promise
+            .then((result) => {
+              shim.restore();
+              app.onCompleteResolved(result);
+            })
+            .catch((err) => {
+              shim.restore();
+              app.onCompleteRejected(err);
+            });
+        },
+
+        /** Synchronous. Re-runs 3DS verification after a suspended tab. */
+        resumeTap() {
+          this.confirmTap();
+        },
+      };
+
+      /* =================================================================
+       * Alpine app
+       * ================================================================= */
+      function harness() {
         return {
+          PROXY: PROXY_URL,
+
           step: "shop",
+          phase: "idle", // idle | rendering | armed | completing | stalled | charging | done
           environment: "prod",
-          currency: "JOD", // Defaults to JOD
+          currency: "JOD",
+          forceManualConfirm: false,
           loading: false,
-          loadingMessage: "Initializing...",
+          loadingMessage: "Initialising…",
           customAmount: 1.0,
+          cart: [],
+          total: 0,
+          reference: null,
+          log: [],
+          t0: Date.now(),
+          diag: { engine: IS_IOS ? "WebKit / iOS" : "non-iOS", shim: "idle" },
+          pollTimer: null,
+          stallTimer: null,
+
           products: [
-            {
-              id: 1,
-              name: "Basic Plan",
-              price: 0.1,
-              desc: "Entry level tier.",
-            },
-            {
-              id: 2,
-              name: "Standard Plan",
-              price: 0.2,
-              desc: "Most popular tier.",
-            },
-            {
-              id: 3,
-              name: "Premium Plan",
-              price: 0.3,
-              desc: "The highest tier test.",
-            },
+            { id: 1, name: "Basic", price: 0.1, desc: "Entry tier." },
+            { id: 2, name: "Standard", price: 0.2, desc: "Popular tier." },
+            { id: 3, name: "Premium", price: 0.3, desc: "Top tier." },
             {
               id: 4,
-              name: "Custom Amount",
+              name: "Custom",
               price: 0,
-              desc: "Enter your preferred amount.",
+              desc: "Your amount.",
               isCustom: true,
             },
           ],
-          cart: [],
-          total: 0,
 
-          addToCart(product) {
-            let finalPrice = product.isCustom
-              ? parseFloat(this.customAmount)
-              : parseFloat(product.price);
+          init() {
+            window.BaePay.app = this;
+            this.logLine("harness ready · " + this.diag.engine);
 
-            if (isNaN(finalPrice) || finalPrice <= 0) {
-              alert("Please enter a valid amount greater than 0.");
-              return;
-            }
+            // Diagnostic: record every cross-origin message the SDK relies on.
+            window.addEventListener(
+              "message",
+              (e) => {
+                if (e.origin === window.location.origin) return;
+                this.logLine("postMessage from " + e.origin);
+              },
+              true,
+            );
 
-            this.cart.push({ ...product, price: finalPrice });
-            this.total = this.cart.reduce((sum, item) => sum + item.price, 0);
+            // Issue 3: the tab woke up — verify the payment server-side.
+            document.addEventListener("visibilitychange", () => {
+              this.logLine("visibility → " + document.visibilityState);
+              if (document.visibilityState !== "visible") return;
+              if (!this.reference || window.BaePay.settled) return;
+              if (this.phase === "completing" || this.phase === "stalled") {
+                this.logLine("tab resumed mid-3DS, starting status poll");
+                this.pollStatus(0);
+              }
+            });
+
+            window.addEventListener("pageshow", (e) => {
+              if (e.persisted) this.logLine("restored from bfcache");
+            });
           },
 
-          async initiateCheckout() {
+          logLine(msg) {
+            this.log.push({ id: Math.random(), t: Date.now() - this.t0, msg });
+            console.log("[bae]", msg);
+          },
+
+          copyLog() {
+            const text = this.log.map((l) => l.t + "ms " + l.msg).join("\n");
+            navigator.clipboard.writeText(text);
+          },
+
+          addToCart(product) {
+            const price = product.isCustom
+              ? parseFloat(this.customAmount)
+              : product.price;
+            if (!isFinite(price) || price <= 0)
+              return alert("Enter an amount above 0.");
+            this.cart.push({ ...product, price });
+            this.total = this.cart.reduce((s, i) => s + i.price, 0);
+          },
+
+          reset() {
+            clearTimeout(this.stallTimer);
+            clearTimeout(this.pollTimer);
+            window.location.reload();
+          },
+
+          /* ---------------- phase 1: context + SDK + card entry ------- */
+          async startCheckout() {
             this.step = "checkout";
+            this.phase = "rendering";
             this.loading = true;
-            this.loadingMessage = `Connecting to Proxy (${this.environment.toUpperCase()})...`;
+            this.loadingMessage = "Requesting checkout session…";
             document.getElementById("payment-selection-container").innerHTML =
               "";
             document.getElementById("payment-screen-container").innerHTML = "";
 
             try {
-              const payload = JSON.stringify({
-                totalAmount: this.total.toFixed(2),
-                origin: window.location.origin,
-                environment: this.environment,
-                currency: this.currency, // PASSED DYNAMICALLY TO WORKER
+              const res = await fetch(this.PROXY + "/capture-context", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  totalAmount: this.total.toFixed(2),
+                  currency: this.currency,
+                  environment: this.environment,
+                  origin: window.location.origin,
+                }),
               });
 
-              const response = await fetch(
-                "https://bae-api-proxy.z-kulaghsi.workers.dev",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: payload,
+              const data = await res.json();
+              if (!res.ok)
+                throw new Error(data.error + " — " + (data.detail || ""));
+
+              this.reference = data.reference;
+              window.BaePay.reference = data.reference;
+              this.logLine("capture context received · ref " + data.reference);
+              if (data.storage === "memory") {
+                this.logLine(
+                  "WARNING: worker has no KV binding, recovery is unreliable",
+                );
+              }
+
+              this.loadingMessage = "Loading payment SDK…";
+              await this.loadSdk(
+                data.clientLibrary,
+                data.clientLibraryIntegrity,
+              );
+
+              const accept = await Accept(data.token);
+              const up = await accept.unifiedPayments();
+              window.BaePay.up = up;
+
+              this.loading = false;
+              this.logLine("rendering payment selection");
+
+              // Resolves when the customer submits their card inside the
+              // SDK iframe. That click belongs to the iframe — the parent
+              // window holds no activation at this point, which is exactly
+              // why we do NOT chain complete() onto it.
+              const transientToken = await up.show({
+                containers: {
+                  paymentSelection: "#payment-selection-container",
                 },
-              );
+              });
 
-              const rawText = await response.text();
+              if (!transientToken)
+                throw new Error("show() returned no transient token");
+              window.BaePay.transientToken = transientToken;
+              this.logLine("transient token captured");
 
-              console.log("RAW BACKEND RESPONSE:", rawText);
-
-              if (!response.ok) {
-                throw new Error(
-                  `Proxy Request Failed (Status: ${response.status})\n\nResponse: ${rawText}`,
-                );
+              if (IS_IOS || this.forceManualConfirm) {
+                // Ask for one real tap in the top-level document.
+                this.phase = "armed";
+                this.logLine("awaiting top-level tap before complete()");
+              } else {
+                // Desktop engines allow the iframe-driven flow.
+                this.phase = "armed";
+                this.$nextTick(() => window.BaePay.confirmTap());
               }
+            } catch (err) {
+              this.fail(err.message);
+            }
+          },
 
-              this.loadingMessage = "Token received. Downloading SDK...";
-
-              let captureContextToken;
-              try {
-                const parsedData = JSON.parse(rawText);
-                if (typeof parsedData === "string") {
-                  captureContextToken = parsedData;
-                } else if (parsedData && parsedData.token) {
-                  captureContextToken = parsedData.token;
-                } else {
-                  throw new Error("Unexpected API format: " + rawText);
-                }
-              } catch (e) {
-                if (!captureContextToken) {
-                  captureContextToken = rawText.replace(/^"|"$/g, "").trim();
-                }
-              }
-
-              const tokenParts = captureContextToken.split(".");
-
-              if (tokenParts.length < 2) {
-                throw new Error(
-                  "Invalid token format received from Bank: " +
-                    captureContextToken,
-                );
-              }
-
-              let base64 = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
-
-              while (base64.length % 4) {
-                base64 += "=";
-              }
-
-              const decodedPayload = JSON.parse(
-                decodeURIComponent(
-                  atob(base64)
-                    .split("")
-                    .map(function (c) {
-                      return (
-                        "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)
-                      );
-                    })
-                    .join(""),
-                ),
-              );
-
-              console.log("--- TOKEN DEBUG INFO ---");
-              console.log(`Environment: ${this.environment.toUpperCase()}`);
-              console.log(`Currency: ${this.currency.toUpperCase()}`);
-              console.log(
-                "Bank's Allowed Payments:",
-                decodedPayload.ctx[0].data.allowedPaymentTypes,
-              );
-              console.log("------------------------");
-
-              const sdkUrl = decodedPayload.ctx[0].data.clientLibrary;
-              const sdkIntegrity =
-                decodedPayload.ctx[0].data.clientLibraryIntegrity || null;
-
+          loadSdk(url, integrity) {
+            return new Promise((resolve, reject) => {
               const existing = document.querySelector(
-                'script[data-cybersource-sdk="true"]',
+                "script[data-cybersource-sdk]",
               );
               if (existing) existing.remove();
-              delete window.Accept;
-              delete window.VAS;
-              delete window.CyberSource;
-
-              await new Promise((resolve, reject) => {
-                const script = document.createElement("script");
-                script.src = sdkUrl;
-                script.async = true;
-                script.type = "text/javascript";
-                script.setAttribute("data-cybersource-sdk", "true");
-
-                if (sdkIntegrity) {
-                  script.integrity = sdkIntegrity;
-                  script.crossOrigin = "anonymous";
-                }
-
-                script.onload = () => setTimeout(resolve, 200);
-                script.onerror = () =>
-                  reject(new Error("Failed to load CyberSource SDK"));
-                document.body.appendChild(script);
-              });
-
-              this.loadingMessage = "Rendering secure fields...";
-
               try {
-                if (!window.Accept)
-                  throw new Error("Accept SDK unavailable after load");
+                delete window.Accept;
+              } catch (e) {}
 
-                const accept = await Accept(captureContextToken);
-                const up = await accept.unifiedPayments();
-
-                this.loading = false;
-
-                const transientToken = await up.show({
-                  containers: {
-                    paymentSelection: "#payment-selection-container",
-                  },
-                  styles: {
-                    submitButton: {
-                      backgroundColor: "#8b5cf6",
-                      color: "#ffffff",
-                      "border-radius": "12px",
-                    },
-                    label: {
-                      color: "#ea580c",
-                      "font-weight": "bold",
-                    },
-                    input: {
-                      color: "#2563eb",
-                      "border-radius": "8px",
-                      border: "2px solid #8b5cf6",
-                    },
-                    paymentOptionItem: {
-                      background: "#fef08a",
-                      border: "2px solid #ea580c",
-                    },
-                  },
-                });
-
-                if (!transientToken)
-                  throw new Error("No transient token returned from show()");
-
-                this.loading = true;
-                this.loadingMessage = "Completing authentication...";
-
-                const completeResult = await up.complete(transientToken);
-
-                let decodedResult = {};
-                try {
-                  if (
-                    typeof completeResult === "string" &&
-                    completeResult.includes(".")
-                  ) {
-                    decodedResult = JSON.parse(
-                      atob(completeResult.split(".")[1]),
-                    );
-                  }
-                } catch (e) {
-                  console.warn("Could not decode completeResult as JWT", e);
-                }
-
-                if (
-                  decodedResult.status === "AUTHORIZED" ||
-                  decodedResult.outcome === "AUTHORIZED"
-                ) {
-                  this.loading = false;
-                  document.getElementById(
-                    "payment-selection-container",
-                  ).innerHTML = "";
-
-                  if (window.ReactNativeWebView) {
-                    window.ReactNativeWebView.postMessage(
-                      JSON.stringify({ event: "payment_success" }),
-                    );
-                  }
-
-                  document.getElementById(
-                    "payment-screen-container",
-                  ).innerHTML = `
-                      <div class="text-center py-10 animate-in zoom-in duration-500">
-                        <div class="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg shadow-green-200">✓</div>
-                        <h3 class="text-2xl font-black text-gray-900">Payment Successful!</h3>
-                        <p class="text-gray-500 mt-2 font-medium">Auto-Authorized securely via CyberSource (${this.environment.toUpperCase()} - ${this.currency}).</p>
-                        <button onclick="window.location.reload()" class="mt-8 text-blue-600 font-bold hover:underline">Start New Test</button>
-                      </div>
-                    `;
-                  return;
-                }
-
-                this.loadingMessage = "Processing final payment...";
-                document.getElementById(
-                  "payment-selection-container",
-                ).innerHTML = "";
-
-                const finalChargeResponse = await fetch(
-                  "https://bae-api-proxy.z-kulaghsi.workers.dev/process-payment",
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      transientToken: completeResult,
-                      environment: this.environment,
-                    }),
-                  },
-                );
-
-                const chargeResultRaw = await finalChargeResponse.text();
-
-                if (!finalChargeResponse.ok) {
-                  throw new Error(`Charge Failed: ${chargeResultRaw}`);
-                }
-
-                this.loading = false;
-
-                if (window.ReactNativeWebView) {
-                  window.ReactNativeWebView.postMessage(
-                    JSON.stringify({ event: "payment_success" }),
-                  );
-                }
-
-                document.getElementById("payment-screen-container").innerHTML =
-                  `
-                  <div class="text-center py-10 animate-in zoom-in duration-500">
-                    <div class="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg shadow-green-200">✓</div>
-                    <h3 class="text-2xl font-black text-gray-900">Payment Successful!</h3>
-                    <p class="text-gray-500 mt-2 font-medium">Your ${this.environment.toUpperCase()} transaction (${this.currency}) has been processed securely.</p>
-                    <button onclick="window.location.reload()" class="mt-8 text-blue-600 font-bold hover:underline">Start New Test</button>
-                  </div>
-                `;
-              } catch (renderError) {
-                console.error("Payment Process Error:", renderError);
-                alert("Error processing payment:\n\n" + renderError.message);
-                this.loading = false;
+              const script = document.createElement("script");
+              script.src = url;
+              script.async = true;
+              script.setAttribute("data-cybersource-sdk", "true");
+              if (integrity) {
+                script.integrity = integrity;
+                script.crossOrigin = "anonymous";
               }
-            } catch (error) {
-              console.error("Integration Error:", error);
-              alert("Checkout Error:\n\n" + error.message);
-              this.loading = false;
+              script.onerror = () =>
+                reject(new Error("SDK failed to load: " + url));
+              script.onload = () => {
+                // Poll instead of a fixed 200ms guess.
+                let tries = 0;
+                const tick = () => {
+                  if (typeof window.Accept === "function") return resolve();
+                  if (++tries > 100)
+                    return reject(new Error("Accept never appeared"));
+                  setTimeout(tick, 50);
+                };
+                tick();
+              };
+              document.body.appendChild(script);
+            });
+          },
+
+          /* ---------------- phase 2: 3DS ------------------------------ */
+          onCompleteStarted() {
+            this.phase = "completing";
+            this.loading = true;
+            this.loadingMessage = "Verifying with your bank…";
+            this.logLine("complete() invoked");
+
+            // Issue 3 safety net: if nothing comes back, offer recovery.
+            clearTimeout(this.stallTimer);
+            this.stallTimer = setTimeout(() => {
+              if (this.phase === "completing") {
+                this.logLine("no response after 90s, marking stalled");
+                this.loading = false;
+                this.phase = "stalled";
+                this.pollStatus(0);
+              }
+            }, 90000);
+          },
+
+          onCompleteResolved(result) {
+            clearTimeout(this.stallTimer);
+            this.logLine("complete() resolved");
+
+            const decoded = this.decodeJwt(result);
+            const status = decoded.status || decoded.outcome;
+
+            if (status === "AUTHORIZED") {
+              this.logLine("auto-authorised, no capture call needed");
+              window.BaePay.settled = true;
+              return this.showSuccess("Authorised");
             }
+            this.charge(result);
+          },
+
+          onCompleteRejected(err) {
+            clearTimeout(this.stallTimer);
+            const msg =
+              (err && (err.message || err.reason || err.code)) || String(err);
+            this.logLine("complete() rejected: " + msg);
+
+            // COMPLETE_AUTHENTICATION_FAILED after a real OTP is usually a
+            // lost postMessage, not a real decline. Ask the server.
+            this.loading = false;
+            this.phase = "stalled";
+            this.pollStatus(0);
+          },
+
+          /* ---------------- phase 3: capture -------------------------- */
+          async charge(completeResult) {
+            this.phase = "charging";
+            this.loading = true;
+            this.loadingMessage = "Completing payment…";
+            document.getElementById("payment-selection-container").innerHTML =
+              "";
+
+            try {
+              const res = await fetch(this.PROXY + "/process-payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  reference: this.reference,
+                  transientToken: completeResult,
+                  environment: this.environment,
+                }),
+              });
+              const data = await res.json();
+              this.logLine("charge → " + (data.status || res.status));
+
+              if (data.status === "COMPLETED") {
+                window.BaePay.settled = true;
+                return this.showSuccess("Paid");
+              }
+              this.fail(
+                "Payment declined: " +
+                  (data.gatewayStatus || JSON.stringify(data)),
+              );
+            } catch (err) {
+              this.fail("Charge request failed: " + err.message);
+            }
+          },
+
+          /* ---------------- recovery poller (Issue 3) ----------------- */
+          async pollStatus(attempt) {
+            if (window.BaePay.settled || attempt > 10) return;
+            try {
+              const res = await fetch(
+                this.PROXY +
+                  "/payment-status?reference=" +
+                  encodeURIComponent(this.reference),
+              );
+              const data = await res.json();
+              this.logLine("poll " + attempt + " → " + data.status);
+
+              if (data.status === "COMPLETED") {
+                window.BaePay.settled = true;
+                clearTimeout(this.stallTimer);
+                return this.showSuccess("Paid");
+              }
+              if (data.status === "DECLINED") {
+                window.BaePay.settled = true;
+                return this.fail("Payment declined by the bank.");
+              }
+            } catch (err) {
+              this.logLine("poll error: " + err.message);
+            }
+            this.pollTimer = setTimeout(
+              () => this.pollStatus(attempt + 1),
+              Math.min(1000 * Math.pow(1.6, attempt), 8000),
+            );
+          },
+
+          /* ---------------- helpers ----------------------------------- */
+          decodeJwt(value) {
+            try {
+              if (typeof value === "string" && value.split(".").length >= 2) {
+                let b64 = value
+                  .split(".")[1]
+                  .replace(/-/g, "+")
+                  .replace(/_/g, "/");
+                while (b64.length % 4) b64 += "=";
+                return JSON.parse(decodeURIComponent(escape(atob(b64))));
+              }
+              if (value && typeof value === "object") return value;
+            } catch (e) {
+              this.logLine("jwt decode failed");
+            }
+            return {};
+          },
+
+          showSuccess(label) {
+            clearTimeout(this.pollTimer);
+            this.phase = "done";
+            this.loading = false;
+            document.getElementById("payment-selection-container").innerHTML =
+              "";
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({
+                  event: "payment_success",
+                  reference: this.reference,
+                }),
+              );
+            }
+            document.getElementById("payment-screen-container").innerHTML =
+              '<div class="text-center py-10">' +
+              '<div class="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>' +
+              '<h3 class="text-2xl font-black">' +
+              label +
+              "</h3>" +
+              '<p class="text-gray-500 mt-2 text-sm font-mono">' +
+              this.reference +
+              "</p>" +
+              '<button onclick="window.location.reload()" class="mt-6 text-blue-600 font-bold">Run another test</button>' +
+              "</div>";
+          },
+
+          fail(message) {
+            clearTimeout(this.stallTimer);
+            this.loading = false;
+            this.phase = "idle";
+            this.logLine("FAIL " + message);
+            document.getElementById("payment-screen-container").innerHTML =
+              '<div class="text-center py-8">' +
+              '<div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">!</div>' +
+              '<h3 class="text-lg font-bold">Payment not completed</h3>' +
+              '<p class="text-gray-500 mt-2 text-sm">' +
+              message +
+              "</p>" +
+              '<button onclick="window.location.reload()" class="mt-5 text-blue-600 font-bold">Try again</button>' +
+              "</div>";
           },
         };
       }
