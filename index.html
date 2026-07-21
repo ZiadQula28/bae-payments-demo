@@ -469,6 +469,16 @@
               if (data.allowedPaymentTypes) {
                 this.logLine("bank allows: " + JSON.stringify(data.allowedPaymentTypes));
               }
+              // The SDK build must match the token it was minted with.
+              this.logLine(
+                "SDK (withDecode=" + data.withDecode + ", from " + data.sdkSource + "): " + data.clientLibrary,
+              );
+              if (data.sdkMismatch) {
+                this.logLine(
+                  "SDK URL MISMATCH — token says " + data.jwtLibrary + " but JSON says " + data.jsonLibrary,
+                  "err",
+                );
+              }
               if (data.storage === "memory") {
                 this.logLine("worker has no KV binding — status polling is unreliable", "warn");
               }
