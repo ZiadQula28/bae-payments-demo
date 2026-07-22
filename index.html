@@ -193,13 +193,19 @@
       const IS_IOS =
         /iPad|iPhone|iPod/.test(UA) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-      const IOS_BROWSER = IS_IOS
-        ? /CriOS/.test(UA)
+      // Chrome-iOS = CriOS, Firefox-iOS = FxiOS, Edge-iOS = EdgiOS.
+      // Some builds drop the token; when that happens we still know it's iOS,
+      // which is all the shim path actually depends on. The raw UA is logged
+      // so a mislabel can never hide the real engine again.
+      const IOS_BROWSER = !IS_IOS
+        ? "desktop"
+        : /CriOS/.test(UA)
           ? "Chrome iOS"
           : /FxiOS/.test(UA)
             ? "Firefox iOS"
-            : "Safari iOS"
-        : "desktop";
+            : /EdgiOS/.test(UA)
+              ? "Edge iOS"
+              : "iOS WebKit (Safari or untagged Chrome)";
 
       /* =================================================================
        * Pop-up activation shim
@@ -258,7 +264,17 @@
         }
 
         let consumed = false;
+        let sawOpenCall = false;
         window.open = function (url, name, features) {
+          sawOpenCall = true;
+          // Show exactly what the SDK asked for — this is the missing datum.
+          logger(
+            "shim: SDK called window.open(url=" +
+              (url ? String(url).slice(0, 60) : "empty") +
+              ", name=" +
+              (name || "none") +
+              ")",
+          );
           if (placeholder && !placeholder.closed && !consumed) {
             consumed = true;
             logger("shim: handed pre-opened window to SDK");
@@ -266,20 +282,32 @@
               try {
                 placeholder.location.replace(url);
               } catch (e) {
-                placeholder.location.href = url;
+                try {
+                  placeholder.location.href = url;
+                } catch (e2) {
+                  logger("shim: could NOT navigate placeholder — " + e2.message);
+                }
               }
             }
             return placeholder;
           }
+          logger("shim: SDK opened a SECOND window (placeholder already used)");
           return original.call(window, url, name, features);
         };
 
+        // Longer than before: if the SDK never calls window.open the whole
+        // theory is wrong, and we want that fact in the log, not a window
+        // we closed at 12s masking it.
         const timer = setTimeout(() => {
           if (!consumed) {
-            logger("shim: SDK used an iframe, closing unused window");
+            logger(
+              sawOpenCall
+                ? "shim: window.open was called but placeholder unused"
+                : "shim: SDK never called window.open — it used an iframe",
+            );
             restore();
           }
-        }, 12000);
+        }, 30000);
 
         function restore() {
           clearTimeout(timer);
@@ -353,7 +381,16 @@
             })
             .catch((err) => {
               this.inFlight = false;
-              shim.restore();
+              // DIAGNOSTIC: if the challenge is living in our placeholder,
+              // closing it on reject is itself the "cancel". When this flag
+              // is on we leave the window open so the poll (or the user
+              // finishing the OTP) can still land. restore() runs later.
+              if (app.keepWindowOnReject) {
+                app.logLine("keeping 3DS window open after reject (diagnostic)", "warn");
+                setTimeout(() => shim.restore(), 60000);
+              } else {
+                shim.restore();
+              }
               app.onCompleteRejected(err);
             });
         },
@@ -371,6 +408,7 @@
           environment: "prod",
           currency: "JOD",
           autoComplete: false,
+          keepWindowOnReject: IS_IOS, // diagnostic: don't kill 3DS window on iOS reject
           loading: false,
           loadingMessage: "Initialising…",
           customAmount: 1.0,
@@ -394,6 +432,7 @@
           init() {
             window.BaePay.app = this;
             this.logLine("harness ready · " + IOS_BROWSER);
+            this.logLine("UA: " + UA.slice(0, 120));
 
             window.addEventListener(
               "message",
