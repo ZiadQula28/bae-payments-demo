@@ -617,6 +617,11 @@
             if (decoded.status || decoded.outcome) {
               this.logLine("3DS outcome: " + (decoded.status || decoded.outcome));
             }
+            // Full payload — this is the JWT decode you used to do by hand.
+            // Shows amountDetails, processor codes, everything the SDK saw.
+            try {
+              this.logLine("complete() FULL: " + JSON.stringify(decoded).slice(0, 1500));
+            } catch (e) {}
             if (decoded.status === "AUTHORIZED" || decoded.outcome === "AUTHORIZED") {
               window.BaePay.settled = true;
               return this.showSuccess("Authorised");
