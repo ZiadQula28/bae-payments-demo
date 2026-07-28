@@ -18,11 +18,14 @@
             :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
             x-text="environment.toUpperCase()"
           ></button>
-          <button
-            @click="currency = currency === 'JOD' ? 'USD' : 'JOD'"
-            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white bg-gray-800"
-            x-text="currency"
-          ></button>
+          <select
+            x-model="currency"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white bg-gray-800 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400"
+          >
+            <template x-for="c in currencies" :key="c.code">
+              <option :value="c.code" x-text="c.code + ' · ' + c.name"></option>
+            </template>
+          </select>
           <label class="flex items-center gap-2 text-xs font-medium text-gray-600">
             <input type="checkbox" x-model="autoComplete" class="accent-blue-600" />
             Auto-complete (desktop only)
@@ -69,7 +72,7 @@
         >
           <div>
             <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total</p>
-            <span class="font-black text-xl" x-text="total.toFixed(2) + ' ' + currency"></span>
+            <span class="font-black text-xl" x-text="formatAmount(total) + ' ' + currency"></span>
           </div>
           <button @click="startCheckout()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 transition">
             Check out
@@ -95,7 +98,7 @@
 
           <div class="flex justify-between items-center mb-6 border-b pb-4">
             <span class="text-gray-500">Amount due</span>
-            <span class="text-xl font-bold" x-text="total.toFixed(2) + ' ' + currency"></span>
+            <span class="text-xl font-bold" x-text="formatAmount(total) + ' ' + currency"></span>
           </div>
 
           <div class="relative min-h-[320px] border border-gray-200 rounded-2xl bg-gray-50 p-3">
@@ -122,7 +125,7 @@
             style="display: none"
             class="mt-5 w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg active:scale-[0.99] transition"
           >
-            Confirm and pay <span x-text="total.toFixed(2) + ' ' + currency"></span>
+            Confirm and pay <span x-text="formatAmount(total) + ' ' + currency"></span>
           </button>
 
           <button
@@ -408,6 +411,26 @@
           environment: "prod",
           currency: "JOD",
           autoComplete: false,
+
+          // Ordered by ISO 4217 numeric code (the international standard order).
+          // `dp` = ISO decimal places; the 3-dp currencies (JOD, BHD, KWD, OMR)
+          // are the ones that expose the sandbox minor-units amount-table quirk.
+          currencies: [
+            { code: "CHF", name: "Swiss Franc", num: 756, dp: 2 },
+            { code: "EUR", name: "Euro", num: 978, dp: 2 },
+            { code: "GBP", name: "Pound Sterling", num: 826, dp: 2 },
+            { code: "SEK", name: "Swedish Krona", num: 752, dp: 2 },
+            { code: "USD", name: "US Dollar", num: 840, dp: 2 },
+            { code: "CAD", name: "Canadian Dollar", num: 124, dp: 2 },
+            { code: "JPY", name: "Japanese Yen", num: 392, dp: 0 },
+            { code: "AED", name: "UAE Dirham", num: 784, dp: 2 },
+            { code: "SAR", name: "Saudi Riyal", num: 682, dp: 2 },
+            { code: "QAR", name: "Qatari Riyal", num: 634, dp: 2 },
+            { code: "JOD", name: "Jordanian Dinar", num: 400, dp: 3 },
+            { code: "BHD", name: "Bahraini Dinar", num: 48, dp: 3 },
+            { code: "KWD", name: "Kuwaiti Dinar", num: 414, dp: 3 },
+            { code: "OMR", name: "Omani Rial", num: 512, dp: 3 },
+          ].sort((a, b) => a.num - b.num),
           keepWindowOnReject: IS_IOS, // diagnostic: don't kill 3DS window on iOS reject
           loading: false,
           loadingMessage: "Initialising…",
@@ -488,7 +511,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  totalAmount: this.total.toFixed(2),
+                  totalAmount: this.formatAmount(this.total),
                   currency: this.currency,
                   environment: this.environment,
                   origin: window.location.origin,
@@ -502,7 +525,7 @@
 
               this.reference = data.reference;
               this.logLine(
-                "capture context · ref " + data.reference + " · " + this.currency + " " + this.total.toFixed(2),
+                "capture context · ref " + data.reference + " · " + this.currency + " " + this.formatAmount(this.total),
               );
               this.logLine("targetOrigins: " + JSON.stringify(data.targetOrigins));
               if (data.allowedPaymentTypes) {
@@ -730,6 +753,14 @@
           },
 
           /* ---------------- helpers ----------------------------------- */
+          // Format the amount to the selected currency's ISO decimal places.
+          // JPY -> 0 dp, dinars -> 3 dp, everything else -> 2 dp.
+          formatAmount(value) {
+            const cur = this.currencies.find((c) => c.code === this.currency);
+            const dp = cur ? cur.dp : 2;
+            return Number(value).toFixed(dp);
+          },
+
           decodeJwt(value) {
             try {
               if (typeof value === "string" && value.split(".").length >= 2) {
