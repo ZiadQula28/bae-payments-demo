@@ -5,12 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BAE Unified Checkout – 3DS resilience harness</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script
+      defer
+      src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
   </head>
   <body class="bg-gray-50 font-sans text-gray-900" x-data="harness()">
     <nav class="bg-white border-b border-gray-200 p-4 sticky top-0 z-50">
-      <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4">
+      <div
+        class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-4"
+      >
         <h1 class="text-xl font-bold italic">Payments+</h1>
+
         <div class="flex items-center gap-3">
           <button
             @click="environment = environment === 'prod' ? 'dev' : 'prod'"
@@ -18,17 +24,20 @@
             :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
             x-text="environment.toUpperCase()"
           ></button>
-          <select
-            x-model="currency"
-            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white bg-gray-800 border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-gray-400"
+          <button
+            @click="currency = currency === 'JOD' ? 'USD' : 'JOD'"
+            class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white bg-gray-800"
+            x-text="currency"
+          ></button>
+          <label
+            class="flex items-center gap-2 text-xs font-medium text-gray-600"
           >
-            <template x-for="c in currencies" :key="c.code">
-              <option :value="c.code" x-text="c.code + ' · ' + c.name"></option>
-            </template>
-          </select>
-          <label class="flex items-center gap-2 text-xs font-medium text-gray-600">
-            <input type="checkbox" x-model="autoComplete" class="accent-blue-600" />
-            Auto-complete (desktop only)
+            <input
+              type="checkbox"
+              x-model="forceManualConfirm"
+              class="accent-blue-600"
+            />
+            Force confirm step
           </label>
         </div>
       </div>
@@ -40,13 +49,19 @@
         <h2 class="text-2xl font-bold mb-6">Select an amount</h2>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <template x-for="product in products" :key="product.id">
-            <div class="bg-white p-5 rounded-2xl border border-gray-200 flex flex-col justify-between">
+            <div
+              class="bg-white p-5 rounded-2xl border border-gray-200 flex flex-col justify-between"
+            >
               <div>
                 <h3 class="font-bold" x-text="product.name"></h3>
                 <p class="text-gray-500 text-sm mt-1" x-text="product.desc"></p>
               </div>
               <div class="mt-6 flex justify-between items-center gap-2">
-                <span x-show="!product.isCustom" class="font-black text-lg" x-text="product.price.toFixed(2)"></span>
+                <span
+                  x-show="!product.isCustom"
+                  class="font-black text-lg"
+                  x-text="product.price.toFixed(2)"
+                ></span>
                 <input
                   x-show="product.isCustom"
                   type="number"
@@ -71,22 +86,41 @@
           class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white shadow-2xl border border-gray-200 px-6 py-4 rounded-3xl flex items-center gap-6"
         >
           <div>
-            <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Total</p>
-            <span class="font-black text-xl" x-text="formatAmount(total) + ' ' + currency"></span>
+            <p
+              class="text-[10px] text-gray-400 uppercase font-bold tracking-widest"
+            >
+              Total
+            </p>
+            <span
+              class="font-black text-xl"
+              x-text="total.toFixed(2) + ' ' + currency"
+            ></span>
           </div>
-          <button @click="startCheckout()" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 transition">
+          <button
+            @click="startCheckout()"
+            class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-blue-700 transition"
+          >
             Check out
           </button>
         </div>
       </section>
 
       <!-- ------------------------------------------------ checkout -->
-      <section x-show="step === 'checkout'" class="max-w-xl mx-auto" style="display: none">
-        <button @click="reset()" class="text-gray-400 mb-4 text-sm hover:text-black">
+      <section
+        x-show="step === 'checkout'"
+        class="max-w-xl mx-auto"
+        style="display: none"
+      >
+        <button
+          @click="reset()"
+          class="text-gray-400 mb-4 text-sm hover:text-black"
+        >
           ← Reset and return to shop
         </button>
 
-        <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-200">
+        <div
+          class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-200"
+        >
           <div class="flex items-center gap-2 mb-4">
             <h2 class="text-2xl font-black">Secure checkout</h2>
             <span
@@ -98,24 +132,36 @@
 
           <div class="flex justify-between items-center mb-6 border-b pb-4">
             <span class="text-gray-500">Amount due</span>
-            <span class="text-xl font-bold" x-text="formatAmount(total) + ' ' + currency"></span>
+            <span
+              class="text-xl font-bold"
+              x-text="total.toFixed(2) + ' ' + currency"
+            ></span>
           </div>
 
-          <div class="relative min-h-[320px] border border-gray-200 rounded-2xl bg-gray-50 p-3">
+          <div
+            class="relative min-h-[320px] border border-gray-200 rounded-2xl bg-gray-50 p-3"
+          >
             <div
               x-show="loading"
               class="absolute inset-0 flex flex-col items-center justify-center bg-white/95 z-10 rounded-2xl"
             >
-              <div class="animate-spin rounded-full h-9 w-9 border-b-2 border-blue-600"></div>
-              <p class="mt-3 text-sm font-semibold text-gray-600" x-text="loadingMessage"></p>
+              <div
+                class="animate-spin rounded-full h-9 w-9 border-b-2 border-blue-600"
+              ></div>
+              <p
+                class="mt-3 text-sm font-semibold text-gray-600"
+                x-text="loadingMessage"
+              ></p>
             </div>
+
             <div id="payment-selection-container" class="w-full"></div>
             <div id="payment-screen-container" class="w-full"></div>
           </div>
 
           <!--
-            Plain HTML, inline onclick, synchronous handler. No framework and
-            no state write may sit between the tap and up.complete().
+            CRITICAL (iOS): this button is plain HTML with an inline onclick.
+            No framework, no async wrapper, no state write before up.complete().
+            WebKit only grants pop-up permission inside the same task as the tap.
           -->
           <button
             id="confirm-pay-button"
@@ -125,13 +171,14 @@
             style="display: none"
             class="mt-5 w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg active:scale-[0.99] transition"
           >
-            Confirm and pay <span x-text="formatAmount(total) + ' ' + currency"></span>
+            Confirm and pay
+            <span x-text="total.toFixed(2) + ' ' + currency"></span>
           </button>
 
           <button
             id="resume-pay-button"
             type="button"
-            onclick="window.BaePay.confirmTap()"
+            onclick="window.BaePay.resumeTap()"
             x-show="phase === 'stalled'"
             style="display: none"
             class="mt-5 w-full bg-amber-500 text-white py-4 rounded-2xl font-bold text-lg active:scale-[0.99] transition"
@@ -139,31 +186,27 @@
             Resume verification
           </button>
 
-          <!-- Pop-up blocked: do NOT call complete(), it only burns attempts -->
-          <div x-show="phase === 'popup_blocked'" style="display: none" class="mt-5 rounded-2xl border-2 border-red-200 bg-red-50 p-5">
-            <h3 class="font-bold text-red-800">Your browser blocked the bank's verification window</h3>
-            <p class="mt-2 text-sm text-red-700">
-              The 3D Secure step opens in a new window. Allow pop-ups for this site, then tap below.
-            </p>
-            <ul class="mt-3 text-sm text-red-700 list-disc pl-5 space-y-1">
-              <li><strong>Chrome on iPhone:</strong> ⋯ menu → Settings → Content Settings → Block Pop-ups → off</li>
-              <li><strong>Safari on iPhone:</strong> Settings app → Apps → Safari → Block Pop-ups → off</li>
-            </ul>
-            <button
-              type="button"
-              onclick="window.BaePay.confirmTap()"
-              class="mt-4 w-full bg-red-600 text-white py-3 rounded-xl font-bold active:scale-[0.99] transition"
-            >
-              I've allowed pop-ups — try again
-            </button>
-          </div>
+          <p
+            x-show="phase === 'stalled'"
+            class="mt-3 text-sm text-amber-700"
+            style="display: none"
+          >
+            The bank's verification window did not report back. Tap resume to
+            check the result.
+          </p>
         </div>
 
         <!-- ------------------------------------------------ diagnostics -->
         <div class="mt-6 bg-white border border-gray-200 rounded-2xl p-5">
           <div class="flex justify-between items-center mb-3">
-            <h3 class="font-bold text-sm uppercase tracking-widest text-gray-500">Diagnostics</h3>
-            <button @click="copyLog()" class="text-xs font-bold text-blue-600">Copy log</button>
+            <h3
+              class="font-bold text-sm uppercase tracking-widest text-gray-500"
+            >
+              Diagnostics
+            </h3>
+            <button @click="copyLog()" class="text-xs font-bold text-blue-600">
+              Copy log
+            </button>
           </div>
           <dl class="grid grid-cols-2 gap-y-1 text-xs mb-4">
             <dt class="text-gray-500">Engine</dt>
@@ -175,10 +218,13 @@
             <dt class="text-gray-500">Phase</dt>
             <dd class="font-mono" x-text="phase"></dd>
           </dl>
-          <div class="bg-gray-900 text-gray-100 rounded-xl p-3 max-h-72 overflow-auto font-mono text-[11px] leading-relaxed">
+          <div
+            class="bg-gray-900 text-gray-100 rounded-xl p-3 max-h-64 overflow-auto font-mono text-[11px] leading-relaxed"
+          >
             <template x-for="line in log" :key="line.id">
-              <div :class="line.level === 'err' ? 'text-red-400' : line.level === 'warn' ? 'text-amber-300' : ''">
-                <span class="text-gray-500" x-text="line.t + 'ms '"></span><span x-text="line.msg"></span>
+              <div>
+                <span class="text-gray-500" x-text="line.t + 'ms '"></span>
+                <span x-text="line.msg"></span>
               </div>
             </template>
           </div>
@@ -192,68 +238,39 @@
        * ================================================================= */
       const PROXY_URL = "https://bae-api-proxy.z-kulaghsi.workers.dev";
 
+      /* =================================================================
+       * Environment detection
+       * ================================================================= */
       const UA = navigator.userAgent;
       const IS_IOS =
         /iPad|iPhone|iPod/.test(UA) ||
         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-      // Chrome-iOS = CriOS, Firefox-iOS = FxiOS, Edge-iOS = EdgiOS.
-      // Some builds drop the token; when that happens we still know it's iOS,
-      // which is all the shim path actually depends on. The raw UA is logged
-      // so a mislabel can never hide the real engine again.
-      const IOS_BROWSER = !IS_IOS
-        ? "desktop"
-        : /CriOS/.test(UA)
-          ? "Chrome iOS"
-          : /FxiOS/.test(UA)
-            ? "Firefox iOS"
-            : /EdgiOS/.test(UA)
-              ? "Edge iOS"
-              : "iOS WebKit (Safari or untagged Chrome)";
 
       /* =================================================================
-       * Pop-up activation shim
+       * Pop-up activation shim  (Issue 2)
        * -----------------------------------------------------------------
-       * WebKit only grants window.open() inside the task that handled the
-       * tap, and the SDK opens its 3DS window after an internal round trip.
-       * We open a window while the grant is alive and hand that same window
-       * to the SDK when it asks.
+       * WebKit grants window.open() permission only inside the task that
+       * handled the tap. The SDK opens its 3DS window *after* an internal
+       * network round trip, so by then the grant is gone.
        *
-       * Chrome on iOS refuses window.open("") outright, so we try several
-       * URL forms before giving up.
+       * Fix: open a blank window synchronously while we still hold the
+       * grant, then hand that same window to the SDK when it calls
+       * window.open() a moment later.
        * ================================================================= */
-      function openPlaceholder(logger) {
-        const strategies = [
-          ["about:blank", "about:blank"],
-          ["", "(empty)"],
-          [window.location.origin + "/3ds-bridge.html", "same-origin path"],
-        ];
-        for (const [url, label] of strategies) {
-          let win = null;
-          try {
-            win = window.open(url, "_blank");
-          } catch (e) {
-            win = null;
-          }
-          if (win && !win.closed && typeof win.focus === "function") {
-            logger("shim: window opened via " + label);
-            return win;
-          }
-          if (win && win.closed) {
-            try {
-              win.close();
-            } catch (e) {}
-          }
-        }
-        return null;
-      }
-
       function installOpenShim(logger) {
         const original = window.open;
-        const placeholder = openPlaceholder(logger);
+        let placeholder = null;
+        let consumed = false;
 
-        if (!placeholder) {
-          logger("shim: every window.open strategy was refused");
-          return null; // caller must NOT proceed on iOS
+        try {
+          placeholder = original.call(window, "", "_blank");
+        } catch (e) {
+          placeholder = null;
+        }
+
+        if (!placeholder || placeholder.closed) {
+          logger("shim: browser refused the pre-opened window");
+          return { active: false, restore() {} };
         }
 
         try {
@@ -263,21 +280,10 @@
               'height:100vh;margin:0;color:#374151">Opening secure verification…</body>',
           );
         } catch (e) {
-          /* already cross-origin, harmless */
+          /* cross-origin already, harmless */
         }
 
-        let consumed = false;
-        let sawOpenCall = false;
         window.open = function (url, name, features) {
-          sawOpenCall = true;
-          // Show exactly what the SDK asked for — this is the missing datum.
-          logger(
-            "shim: SDK called window.open(url=" +
-              (url ? String(url).slice(0, 60) : "empty") +
-              ", name=" +
-              (name || "none") +
-              ")",
-          );
           if (placeholder && !placeholder.closed && !consumed) {
             consumed = true;
             logger("shim: handed pre-opened window to SDK");
@@ -285,34 +291,22 @@
               try {
                 placeholder.location.replace(url);
               } catch (e) {
-                try {
-                  placeholder.location.href = url;
-                } catch (e2) {
-                  logger("shim: could NOT navigate placeholder — " + e2.message);
-                }
+                placeholder.location.href = url;
               }
             }
             return placeholder;
           }
-          logger("shim: SDK opened a SECOND window (placeholder already used)");
           return original.call(window, url, name, features);
         };
 
-        // Longer than before: if the SDK never calls window.open the whole
-        // theory is wrong, and we want that fact in the log, not a window
-        // we closed at 12s masking it.
         const timer = setTimeout(() => {
           if (!consumed) {
-            logger(
-              sawOpenCall
-                ? "shim: window.open was called but placeholder unused"
-                : "shim: SDK never called window.open — it used an iframe",
-            );
-            restore();
+            logger("shim: SDK used an iframe, closing unused window");
+            cleanup();
           }
-        }, 30000);
+        }, 12000);
 
-        function restore() {
+        function cleanup() {
           clearTimeout(timer);
           window.open = original;
           if (placeholder && !consumed && !placeholder.closed) {
@@ -322,17 +316,18 @@
           }
         }
 
-        return { restore };
+        logger("shim: pre-opened window ready");
+        return { active: true, restore: cleanup };
       }
 
       /* =================================================================
-       * BaePay – kept outside the framework on purpose
+       * BaePay – everything that must stay outside the framework
        * ================================================================= */
       window.BaePay = {
         up: null,
         transientToken: null,
+        reference: null,
         settled: false,
-        inFlight: false,
         app: null,
 
         /** Synchronous. Called straight from a native onclick. */
@@ -340,30 +335,14 @@
           const app = this.app;
           if (!this.up || !this.transientToken) return;
 
-          // Re-entrancy guard: overlapping complete() calls burn attempts
-          // and stack up pollers.
-          if (this.inFlight) {
-            app.logLine("complete() already running, tap ignored", "warn");
-            return;
-          }
-
           // 1. Pre-open the window while the tap grant is still alive.
-          let shim = { restore() {} };
-          if (IS_IOS) {
-            const installed = installOpenShim((m) => app.logLine(m));
-            if (!installed) {
-              // Calling complete() now guarantees "user cancelled".
-              app.diag.shim = "blocked";
-              app.onPopupBlocked();
-              return;
-            }
-            shim = installed;
-            app.diag.shim = "armed";
-          } else {
-            app.diag.shim = "not needed";
-          }
+          const shim = IS_IOS
+            ? installOpenShim((m) => app.logLine(m))
+            : { active: false, restore() {} };
+          app.diag.shim = shim.active ? "armed" : "not needed";
 
           // 2. up.complete() must be the FIRST thing after the shim.
+          //    No await, no state write, no fetch above this line.
           let promise;
           try {
             promise = this.up.complete(this.transientToken);
@@ -374,28 +353,21 @@
           }
 
           // 3. Only now is it safe to touch the UI.
-          this.inFlight = true;
           app.onCompleteStarted();
           promise
             .then((result) => {
-              this.inFlight = false;
               shim.restore();
               app.onCompleteResolved(result);
             })
             .catch((err) => {
-              this.inFlight = false;
-              // DIAGNOSTIC: if the challenge is living in our placeholder,
-              // closing it on reject is itself the "cancel". When this flag
-              // is on we leave the window open so the poll (or the user
-              // finishing the OTP) can still land. restore() runs later.
-              if (app.keepWindowOnReject) {
-                app.logLine("keeping 3DS window open after reject (diagnostic)", "warn");
-                setTimeout(() => shim.restore(), 60000);
-              } else {
-                shim.restore();
-              }
+              shim.restore();
               app.onCompleteRejected(err);
             });
+        },
+
+        /** Synchronous. Re-runs 3DS verification after a suspended tab. */
+        resumeTap() {
+          this.confirmTap();
         },
       };
 
@@ -407,31 +379,10 @@
           PROXY: PROXY_URL,
 
           step: "shop",
-          phase: "idle", // idle|rendering|armed|completing|stalled|popup_blocked|charging|done
+          phase: "idle", // idle | rendering | armed | completing | stalled | charging | done
           environment: "prod",
           currency: "JOD",
-          autoComplete: false,
-
-          // Ordered by ISO 4217 numeric code (the international standard order).
-          // `dp` = ISO decimal places; the 3-dp currencies (JOD, BHD, KWD, OMR)
-          // are the ones that expose the sandbox minor-units amount-table quirk.
-          currencies: [
-            { code: "CHF", name: "Swiss Franc", num: 756, dp: 2 },
-            { code: "EUR", name: "Euro", num: 978, dp: 2 },
-            { code: "GBP", name: "Pound Sterling", num: 826, dp: 2 },
-            { code: "SEK", name: "Swedish Krona", num: 752, dp: 2 },
-            { code: "USD", name: "US Dollar", num: 840, dp: 2 },
-            { code: "CAD", name: "Canadian Dollar", num: 124, dp: 2 },
-            { code: "JPY", name: "Japanese Yen", num: 392, dp: 0 },
-            { code: "AED", name: "UAE Dirham", num: 784, dp: 2 },
-            { code: "SAR", name: "Saudi Riyal", num: 682, dp: 2 },
-            { code: "QAR", name: "Qatari Riyal", num: 634, dp: 2 },
-            { code: "JOD", name: "Jordanian Dinar", num: 400, dp: 3 },
-            { code: "BHD", name: "Bahraini Dinar", num: 48, dp: 3 },
-            { code: "KWD", name: "Kuwaiti Dinar", num: 414, dp: 3 },
-            { code: "OMR", name: "Omani Rial", num: 512, dp: 3 },
-          ].sort((a, b) => a.num - b.num),
-          keepWindowOnReject: IS_IOS, // diagnostic: don't kill 3DS window on iOS reject
+          forceManualConfirm: false,
           loading: false,
           loadingMessage: "Initialising…",
           customAmount: 1.0,
@@ -440,23 +391,28 @@
           reference: null,
           log: [],
           t0: Date.now(),
-          diag: { engine: IOS_BROWSER, shim: "idle" },
+          diag: { engine: IS_IOS ? "WebKit / iOS" : "non-iOS", shim: "idle" },
           pollTimer: null,
-          pollRunning: false,
           stallTimer: null,
 
           products: [
             { id: 1, name: "Basic", price: 0.1, desc: "Entry tier." },
             { id: 2, name: "Standard", price: 0.2, desc: "Popular tier." },
             { id: 3, name: "Premium", price: 0.3, desc: "Top tier." },
-            { id: 4, name: "Custom", price: 0, desc: "Your amount.", isCustom: true },
+            {
+              id: 4,
+              name: "Custom",
+              price: 0,
+              desc: "Your amount.",
+              isCustom: true,
+            },
           ],
 
           init() {
             window.BaePay.app = this;
-            this.logLine("harness ready · " + IOS_BROWSER);
-            this.logLine("UA: " + UA.slice(0, 120));
+            this.logLine("harness ready · " + this.diag.engine);
 
+            // Diagnostic: record every cross-origin message the SDK relies on.
             window.addEventListener(
               "message",
               (e) => {
@@ -466,34 +422,45 @@
               true,
             );
 
+            // Issue 3: the tab woke up — verify the payment server-side.
             document.addEventListener("visibilitychange", () => {
               this.logLine("visibility → " + document.visibilityState);
               if (document.visibilityState !== "visible") return;
               if (!this.reference || window.BaePay.settled) return;
               if (this.phase === "completing" || this.phase === "stalled") {
-                this.logLine("tab resumed mid-3DS, checking server");
-                this.startPolling();
+                this.logLine("tab resumed mid-3DS, starting status poll");
+                this.pollStatus(0);
               }
+            });
+
+            window.addEventListener("pageshow", (e) => {
+              if (e.persisted) this.logLine("restored from bfcache");
             });
           },
 
-          logLine(msg, level) {
-            this.log.push({ id: Math.random(), t: Date.now() - this.t0, msg, level: level || "" });
+          logLine(msg) {
+            this.log.push({ id: Math.random(), t: Date.now() - this.t0, msg });
             console.log("[bae]", msg);
           },
 
           copyLog() {
-            navigator.clipboard.writeText(this.log.map((l) => l.t + "ms " + l.msg).join("\n"));
+            const text = this.log.map((l) => l.t + "ms " + l.msg).join("\n");
+            navigator.clipboard.writeText(text);
           },
 
           addToCart(product) {
-            const price = product.isCustom ? parseFloat(this.customAmount) : product.price;
-            if (!isFinite(price) || price <= 0) return alert("Enter an amount above 0.");
+            const price = product.isCustom
+              ? parseFloat(this.customAmount)
+              : product.price;
+            if (!isFinite(price) || price <= 0)
+              return alert("Enter an amount above 0.");
             this.cart.push({ ...product, price });
             this.total = this.cart.reduce((s, i) => s + i.price, 0);
           },
 
           reset() {
+            clearTimeout(this.stallTimer);
+            clearTimeout(this.pollTimer);
             window.location.reload();
           },
 
@@ -503,7 +470,8 @@
             this.phase = "rendering";
             this.loading = true;
             this.loadingMessage = "Requesting checkout session…";
-            document.getElementById("payment-selection-container").innerHTML = "";
+            document.getElementById("payment-selection-container").innerHTML =
+              "";
             document.getElementById("payment-screen-container").innerHTML = "";
 
             try {
@@ -511,7 +479,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  totalAmount: this.formatAmount(this.total),
+                  totalAmount: this.total.toFixed(2),
                   currency: this.currency,
                   environment: this.environment,
                   origin: window.location.origin,
@@ -519,34 +487,23 @@
               });
 
               const data = await res.json();
-              if (!res.ok) {
+              if (!res.ok)
                 throw new Error(data.error + " — " + (data.detail || ""));
-              }
 
               this.reference = data.reference;
-              this.logLine(
-                "capture context · ref " + data.reference + " · " + this.currency + " " + this.formatAmount(this.total),
-              );
-              this.logLine("targetOrigins: " + JSON.stringify(data.targetOrigins));
-              if (data.allowedPaymentTypes) {
-                this.logLine("bank allows: " + JSON.stringify(data.allowedPaymentTypes));
-              }
-              // The SDK build must match the token it was minted with.
-              this.logLine(
-                "SDK (withDecode=" + data.withDecode + ", from " + data.sdkSource + "): " + data.clientLibrary,
-              );
-              if (data.sdkMismatch) {
-                this.logLine(
-                  "SDK URL MISMATCH — token says " + data.jwtLibrary + " but JSON says " + data.jsonLibrary,
-                  "err",
-                );
-              }
+              window.BaePay.reference = data.reference;
+              this.logLine("capture context received · ref " + data.reference);
               if (data.storage === "memory") {
-                this.logLine("worker has no KV binding — status polling is unreliable", "warn");
+                this.logLine(
+                  "WARNING: worker has no KV binding, recovery is unreliable",
+                );
               }
 
               this.loadingMessage = "Loading payment SDK…";
-              await this.loadSdk(data.clientLibrary, data.clientLibraryIntegrity);
+              await this.loadSdk(
+                data.clientLibrary,
+                data.clientLibraryIntegrity,
+              );
 
               const accept = await Accept(data.token);
               const up = await accept.unifiedPayments();
@@ -555,23 +512,53 @@
               this.loading = false;
               this.logLine("rendering payment selection");
 
+              // Resolves when the customer submits their card inside the
+              // SDK iframe. That click belongs to the iframe — the parent
+              // window holds no activation at this point, which is exactly
+              // why we do NOT chain complete() onto it.
               const transientToken = await up.show({
-                containers: { paymentSelection: "#payment-selection-container" },
+                containers: {
+                  paymentSelection: "#payment-selection-container",
+                },
               });
-              if (!transientToken) throw new Error("show() returned no transient token");
 
+              if (!transientToken)
+                throw new Error("show() returned no transient token");
               window.BaePay.transientToken = transientToken;
               this.logLine("transient token captured");
-              this.phase = "armed";
 
-              // Do NOT call complete() straight off the show() continuation —
-              // the SDK is still exchanging messages for a beat afterwards and
-              // will throw "An error occurred whilst attempting to complete
-              // the transaction". Desktop auto-mode waits; iOS always waits
-              // for the tap because it needs the activation anyway.
-              if (this.autoComplete && !IS_IOS) {
-                this.logLine("auto-complete in 800ms (desktop)");
-                setTimeout(() => window.BaePay.confirmTap(), 800);
+              // Inspect which payment method was actually used before
+              // deciding whether to require the manual tap. The pop-up
+              // timing fix (Issue 2) only applies to manually entered
+              // cards, where the SDK opens a 3DS window after show()
+              // resolves. Apple Pay (and likely Click to Pay) already
+              // carries a strong native user gesture from Face ID / Touch
+              // ID / device recognition and shouldn't need this extra tap.
+              const decodedToken = this.decodeJwt(transientToken);
+              const paymentInfo = decodedToken?.paymentInformation || {};
+              this.logLine(
+                "paymentInformation keys: " +
+                  JSON.stringify(Object.keys(paymentInfo)),
+              );
+
+              const isManualCard = Object.prototype.hasOwnProperty.call(
+                paymentInfo,
+                "card",
+              );
+
+              if ((IS_IOS && isManualCard) || this.forceManualConfirm) {
+                // Ask for one real tap in the top-level document — needed
+                // for manually entered cards on iOS, where WebKit's pop-up
+                // grant expires before the SDK's own window.open() fires.
+                this.phase = "armed";
+                this.logLine(
+                  "awaiting top-level tap before complete() (card on iOS)",
+                );
+              } else {
+                // Apple Pay, Click to Pay, or desktop: no pop-up timing
+                // issue, auto-confirm as before.
+                this.phase = "armed";
+                this.$nextTick(() => window.BaePay.confirmTap());
               }
             } catch (err) {
               this.fail(err.message);
@@ -580,7 +567,9 @@
 
           loadSdk(url, integrity) {
             return new Promise((resolve, reject) => {
-              const existing = document.querySelector("script[data-cybersource-sdk]");
+              const existing = document.querySelector(
+                "script[data-cybersource-sdk]",
+              );
               if (existing) existing.remove();
               try {
                 delete window.Accept;
@@ -594,12 +583,15 @@
                 script.integrity = integrity;
                 script.crossOrigin = "anonymous";
               }
-              script.onerror = () => reject(new Error("SDK failed to load: " + url));
+              script.onerror = () =>
+                reject(new Error("SDK failed to load: " + url));
               script.onload = () => {
+                // Poll instead of a fixed 200ms guess.
                 let tries = 0;
                 const tick = () => {
                   if (typeof window.Accept === "function") return resolve();
-                  if (++tries > 100) return reject(new Error("Accept never appeared"));
+                  if (++tries > 100)
+                    return reject(new Error("Accept never appeared"));
                   setTimeout(tick, 50);
                 };
                 tick();
@@ -609,25 +601,20 @@
           },
 
           /* ---------------- phase 2: 3DS ------------------------------ */
-          onPopupBlocked() {
-            this.loading = false;
-            this.phase = "popup_blocked";
-            this.logLine("3DS window blocked — not calling complete()", "err");
-          },
-
           onCompleteStarted() {
             this.phase = "completing";
             this.loading = true;
             this.loadingMessage = "Verifying with your bank…";
             this.logLine("complete() invoked");
 
+            // Issue 3 safety net: if nothing comes back, offer recovery.
             clearTimeout(this.stallTimer);
             this.stallTimer = setTimeout(() => {
               if (this.phase === "completing") {
-                this.logLine("no response after 90s, marking stalled", "warn");
+                this.logLine("no response after 90s, marking stalled");
                 this.loading = false;
                 this.phase = "stalled";
-                this.startPolling();
+                this.pollStatus(0);
               }
             }, 90000);
           },
@@ -637,15 +624,10 @@
             this.logLine("complete() resolved");
 
             const decoded = this.decodeJwt(result);
-            if (decoded.status || decoded.outcome) {
-              this.logLine("3DS outcome: " + (decoded.status || decoded.outcome));
-            }
-            // Full payload — this is the JWT decode you used to do by hand.
-            // Shows amountDetails, processor codes, everything the SDK saw.
-            try {
-              this.logLine("complete() FULL: " + JSON.stringify(decoded).slice(0, 1500));
-            } catch (e) {}
-            if (decoded.status === "AUTHORIZED" || decoded.outcome === "AUTHORIZED") {
+            const status = decoded.status || decoded.outcome;
+
+            if (status === "AUTHORIZED") {
+              this.logLine("auto-authorised, no capture call needed");
               window.BaePay.settled = true;
               return this.showSuccess("Authorised");
             }
@@ -654,11 +636,15 @@
 
           onCompleteRejected(err) {
             clearTimeout(this.stallTimer);
-            const msg = (err && (err.message || err.reason || err.code)) || String(err);
-            this.logLine("complete() rejected: " + msg, "err");
+            const msg =
+              (err && (err.message || err.reason || err.code)) || String(err);
+            this.logLine("complete() rejected: " + msg);
+
+            // COMPLETE_AUTHENTICATION_FAILED after a real OTP is usually a
+            // lost postMessage, not a real decline. Ask the server.
             this.loading = false;
             this.phase = "stalled";
-            this.startPolling();
+            this.pollStatus(0);
           },
 
           /* ---------------- phase 3: capture -------------------------- */
@@ -666,7 +652,8 @@
             this.phase = "charging";
             this.loading = true;
             this.loadingMessage = "Completing payment…";
-            document.getElementById("payment-selection-container").innerHTML = "";
+            document.getElementById("payment-selection-container").innerHTML =
+              "";
 
             try {
               const res = await fetch(this.PROXY + "/process-payment", {
@@ -679,135 +666,108 @@
                 }),
               });
               const data = await res.json();
-
-              this.logLine("charge → HTTP " + res.status + " · " + (data.status || ""));
-              // The whole point: show what the bank actually said.
-              if (data.gatewayResponse !== undefined) {
-                const body =
-                  typeof data.gatewayResponse === "string"
-                    ? data.gatewayResponse
-                    : JSON.stringify(data.gatewayResponse);
-                this.logLine("gateway said: " + body.slice(0, 600), data.status === "COMPLETED" ? "" : "err");
-              }
+              this.logLine("charge → " + (data.status || res.status));
 
               if (data.status === "COMPLETED") {
                 window.BaePay.settled = true;
                 return this.showSuccess("Paid");
               }
-              window.BaePay.settled = true; // terminal, stop the poller
               this.fail(
-                "Declined by the gateway (" +
-                  (data.gatewayStatus || res.status) +
-                  "). See the gateway line above.",
+                "Payment declined: " +
+                  (data.gatewayStatus || JSON.stringify(data)),
               );
             } catch (err) {
               this.fail("Charge request failed: " + err.message);
             }
           },
 
-          /* ---------------- recovery poller --------------------------- */
-          startPolling() {
-            if (this.pollRunning || window.BaePay.settled) return;
-            this.pollRunning = true;
-            this.pollStatus(0);
-          },
-
+          /* ---------------- recovery poller (Issue 3) ----------------- */
           async pollStatus(attempt) {
-            if (window.BaePay.settled || attempt > 8) {
-              this.pollRunning = false;
-              return;
-            }
+            if (window.BaePay.settled || attempt > 10) return;
             try {
               const res = await fetch(
-                this.PROXY + "/payment-status?reference=" + encodeURIComponent(this.reference),
+                this.PROXY +
+                  "/payment-status?reference=" +
+                  encodeURIComponent(this.reference),
               );
               const data = await res.json();
               this.logLine("poll " + attempt + " → " + data.status);
 
               if (data.status === "COMPLETED") {
                 window.BaePay.settled = true;
-                this.pollRunning = false;
                 clearTimeout(this.stallTimer);
                 return this.showSuccess("Paid");
               }
               if (data.status === "DECLINED") {
                 window.BaePay.settled = true;
-                this.pollRunning = false;
-                if (data.gatewayResponse !== undefined) {
-                  const body =
-                    typeof data.gatewayResponse === "string"
-                      ? data.gatewayResponse
-                      : JSON.stringify(data.gatewayResponse);
-                  this.logLine("gateway said: " + body.slice(0, 600), "err");
-                }
-                return this.fail("Declined by the bank.");
+                return this.fail("Payment declined by the bank.");
               }
             } catch (err) {
-              this.logLine("poll error: " + err.message, "warn");
+              this.logLine("poll error: " + err.message);
             }
-            clearTimeout(this.pollTimer);
             this.pollTimer = setTimeout(
               () => this.pollStatus(attempt + 1),
-              Math.min(1200 * Math.pow(1.6, attempt), 8000),
+              Math.min(1000 * Math.pow(1.6, attempt), 8000),
             );
           },
 
           /* ---------------- helpers ----------------------------------- */
-          // Format the amount to the selected currency's ISO decimal places.
-          // JPY -> 0 dp, dinars -> 3 dp, everything else -> 2 dp.
-          formatAmount(value) {
-            const cur = this.currencies.find((c) => c.code === this.currency);
-            const dp = cur ? cur.dp : 2;
-            return Number(value).toFixed(dp);
-          },
-
           decodeJwt(value) {
             try {
               if (typeof value === "string" && value.split(".").length >= 2) {
-                let b64 = value.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+                let b64 = value
+                  .split(".")[1]
+                  .replace(/-/g, "+")
+                  .replace(/_/g, "/");
                 while (b64.length % 4) b64 += "=";
                 return JSON.parse(decodeURIComponent(escape(atob(b64))));
               }
               if (value && typeof value === "object") return value;
             } catch (e) {
-              this.logLine("jwt decode failed", "warn");
+              this.logLine("jwt decode failed");
             }
             return {};
           },
 
           showSuccess(label) {
             clearTimeout(this.pollTimer);
-            clearTimeout(this.stallTimer);
-            this.pollRunning = false;
             this.phase = "done";
             this.loading = false;
-            document.getElementById("payment-selection-container").innerHTML = "";
+            document.getElementById("payment-selection-container").innerHTML =
+              "";
             if (window.ReactNativeWebView) {
               window.ReactNativeWebView.postMessage(
-                JSON.stringify({ event: "payment_success", reference: this.reference }),
+                JSON.stringify({
+                  event: "payment_success",
+                  reference: this.reference,
+                }),
               );
             }
             document.getElementById("payment-screen-container").innerHTML =
               '<div class="text-center py-10">' +
               '<div class="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">✓</div>' +
-              '<h3 class="text-2xl font-black">' + label + "</h3>" +
-              '<p class="text-gray-500 mt-2 text-xs font-mono break-all">' + this.reference + "</p>" +
+              '<h3 class="text-2xl font-black">' +
+              label +
+              "</h3>" +
+              '<p class="text-gray-500 mt-2 text-sm font-mono">' +
+              this.reference +
+              "</p>" +
               '<button onclick="window.location.reload()" class="mt-6 text-blue-600 font-bold">Run another test</button>' +
               "</div>";
           },
 
           fail(message) {
             clearTimeout(this.stallTimer);
-            clearTimeout(this.pollTimer);
-            this.pollRunning = false;
             this.loading = false;
             this.phase = "idle";
-            this.logLine("FAIL " + message, "err");
+            this.logLine("FAIL " + message);
             document.getElementById("payment-screen-container").innerHTML =
               '<div class="text-center py-8">' +
               '<div class="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">!</div>' +
               '<h3 class="text-lg font-bold">Payment not completed</h3>' +
-              '<p class="text-gray-500 mt-2 text-sm">' + message + "</p>" +
+              '<p class="text-gray-500 mt-2 text-sm">' +
+              message +
+              "</p>" +
               '<button onclick="window.location.reload()" class="mt-5 text-blue-600 font-bold">Try again</button>' +
               "</div>";
           },
