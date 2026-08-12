@@ -524,6 +524,49 @@
                 );
               }
 
+              // ---- CAPTURE-CONTEXT INSPECTOR ----------------------------
+              // Decode the JWT BAE's middleware returned and surface the 3DS
+              // orchestration parameters. This is what tells us whether the
+              // flow is configured for embedded (postMessage) or redirect
+              // (returnUrl) 3DS on mobile — the thing behind the failure.
+              try {
+                const ccDecoded = this.decodeJwt(data.token);
+                const ccData =
+                  (ccDecoded &&
+                    ccDecoded.ctx &&
+                    ccDecoded.ctx[0] &&
+                    ccDecoded.ctx[0].data) ||
+                  {};
+                // Pull the fields that matter for 3DS routing, if present.
+                const ccOrch = {
+                  clientVersion: ccData.clientVersion || ccDecoded.clientVersion,
+                  completeMandate: ccData.completeMandate,
+                  deviceChannel: ccData.deviceChannel,
+                  returnUrl:
+                    ccData.returnUrl ||
+                    (ccData.completeMandate &&
+                      ccData.completeMandate.returnUrl),
+                  orderInformation: ccData.orderInformation,
+                  allowedPaymentTypes: ccData.allowedPaymentTypes,
+                };
+                this.logLine(
+                  "capture-ctx ORCH: " + JSON.stringify(ccOrch).slice(0, 1200),
+                );
+                // Also dump the top-level data keys so nothing is missed.
+                this.logLine(
+                  "capture-ctx data keys: " +
+                    JSON.stringify(Object.keys(ccData)),
+                );
+                // Full dump (truncated) in case the interesting field has an
+                // unexpected name.
+                this.logLine(
+                  "capture-ctx FULL: " + JSON.stringify(ccData).slice(0, 2000),
+                );
+              } catch (e) {
+                this.logLine("capture-ctx decode failed: " + e.message);
+              }
+              // -----------------------------------------------------------
+
               this.loadingMessage = "Loading payment SDK…";
               await this.loadSdk(
                 data.clientLibrary,
