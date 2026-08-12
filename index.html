@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BAE Unified Checkout – 3DS resilience harness</title>
+    <title>BAE Unified Checkout – Flawed Logic Reproduction</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script
       defer
@@ -590,15 +590,19 @@
 
             this.logLine("resolved status: " + status);
 
-            // UPDATED LOGIC: Handle all CyberSource valid success states
-            if (status === "AUTHORIZED" || status === "SUCCESS" || status === "COMPLETED") {
+            // ===============================================================
+            // FLAWED LOGIC INJECTION
+            // This replicates the developer's false-negative bug by strictly
+            // requiring 'COMPLETED'. It will evaluate to false for valid
+            // states like 'AUTHORIZED' or 'SUCCESS'.
+            // ===============================================================
+            if (status === "COMPLETED") {
               this.logLine("authentication success: " + status);
               window.BaePay.settled = true;
               return this.showSuccess("Paid");
+            } else {
+              this.fail("Payment failed locally (status mismatch). Actual status from bank: " + status);
             }
-            
-            // Proceed to backend charge if manual capture is required
-            this.charge(result);
           },
 
           onCompleteRejected(err) {
