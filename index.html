@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BAE Unified Checkout – Flawed Logic Reproduction</title>
+    <title>BAE Unified Checkout – 3DS resilience harness</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script
       defer
@@ -158,6 +158,11 @@
             <div id="payment-screen-container" class="w-full"></div>
           </div>
 
+          <!--
+            CRITICAL (iOS): this button is plain HTML with an inline onclick.
+            No framework, no async wrapper, no state write before up.complete().
+            WebKit only grants pop-up permission inside the same task as the tap.
+          -->
           <button
             id="confirm-pay-button"
             type="button"
@@ -243,20 +248,57 @@
 
       /* =================================================================
        * Pop-up activation shim  (Issue 2)
+       * -----------------------------------------------------------------
+       * WebKit grants window.open() permission only inside the task that
+       * handled the tap. The SDK opens its 3DS window *after* an internal
+       * network round trip, so by then the grant is gone.
+       *
+       * Fix: open a blank window synchronously while we still hold the
+       * grant, then hand that same window to the SDK when it calls
+       * window.open() a moment later.
        * ================================================================= */
       function installOpenShim(logger) {
         const original = window.open;
         let placeholder = null;
         let consumed = false;
 
-        try {
-          placeholder = original.call(window, "", "_blank");
-        } catch (e) {
-          placeholder = null;
+        // navigator.userActivation tells us whether a gesture is actually
+        // live right now. If it isn't, no window.open call can succeed and
+        // the real fix is redirect-based 3DS — log that distinctly.
+        const activation =
+          typeof navigator !== "undefined" && navigator.userActivation
+            ? navigator.userActivation.isActive
+            : "unknown";
+        logger("shim: userActivation.isActive = " + activation);
+
+        // Try a real same-origin URL first: some iOS builds refuse a blank
+        // ("" / about:blank) open but allow opening a real URL from a live
+        // gesture. Fall back to blank. 3ds-bridge.html may 404 harmlessly —
+        // the SDK's URL replaces it immediately.
+        const openTargets = [
+          window.location.origin + "/3ds-bridge.html",
+          "",
+          "about:blank",
+        ];
+        for (const target of openTargets) {
+          try {
+            placeholder = original.call(window, target, "_blank");
+          } catch (e) {
+            placeholder = null;
+          }
+          if (placeholder && !placeholder.closed) {
+            logger("shim: opened via " + (target || "(blank)"));
+            break;
+          }
         }
 
         if (!placeholder || placeholder.closed) {
-          logger("shim: browser refused the pre-opened window");
+          logger(
+            "shim: browser refused the pre-opened window" +
+              (activation === false
+                ? " — NO live user gesture (needs redirect-based 3DS)"
+                : " — gesture present but open blocked"),
+          );
           return { active: false, restore() {} };
         }
 
@@ -317,15 +359,19 @@
         settled: false,
         app: null,
 
+        /** Synchronous. Called straight from a native onclick. */
         confirmTap() {
           const app = this.app;
           if (!this.up || !this.transientToken) return;
 
+          // 1. Pre-open the window while the tap grant is still alive.
           const shim = IS_IOS
             ? installOpenShim((m) => app.logLine(m))
             : { active: false, restore() {} };
           app.diag.shim = shim.active ? "armed" : "not needed";
 
+          // 2. up.complete() must be the FIRST thing after the shim.
+          //    No await, no state write, no fetch above this line.
           let promise;
           try {
             promise = this.up.complete(this.transientToken);
@@ -335,6 +381,7 @@
             return;
           }
 
+          // 3. Only now is it safe to touch the UI.
           app.onCompleteStarted();
           promise
             .then((result) => {
@@ -347,6 +394,7 @@
             });
         },
 
+        /** Synchronous. Re-runs 3DS verification after a suspended tab. */
         resumeTap() {
           this.confirmTap();
         },
@@ -360,7 +408,7 @@
           PROXY: PROXY_URL,
 
           step: "shop",
-          phase: "idle",
+          phase: "idle", // idle | rendering | armed | completing | stalled | charging | done
           environment: "prod",
           currency: "JOD",
           forceManualConfirm: false,
@@ -393,6 +441,7 @@
             window.BaePay.app = this;
             this.logLine("harness ready · " + this.diag.engine);
 
+            // Diagnostic: record every cross-origin message the SDK relies on.
             window.addEventListener(
               "message",
               (e) => {
@@ -402,6 +451,7 @@
               true,
             );
 
+            // Issue 3: the tab woke up — verify the payment server-side.
             document.addEventListener("visibilitychange", () => {
               this.logLine("visibility → " + document.visibilityState);
               if (document.visibilityState !== "visible") return;
@@ -478,6 +528,50 @@
                 );
               }
 
+              // ---- CAPTURE-CONTEXT INSPECTOR ----------------------------
+              // Decode the JWT BAE's middleware returned and surface the 3DS
+              // orchestration parameters. This is what tells us whether the
+              // flow is configured for embedded (postMessage) or redirect
+              // (returnUrl) 3DS on mobile — the thing behind the failure.
+              try {
+                const ccDecoded = this.decodeJwt(data.token);
+                const ccData =
+                  (ccDecoded &&
+                    ccDecoded.ctx &&
+                    ccDecoded.ctx[0] &&
+                    ccDecoded.ctx[0].data) ||
+                  {};
+                // Pull the fields that matter for 3DS routing, if present.
+                const ccOrch = {
+                  clientVersion:
+                    ccData.clientVersion || ccDecoded.clientVersion,
+                  completeMandate: ccData.completeMandate,
+                  deviceChannel: ccData.deviceChannel,
+                  returnUrl:
+                    ccData.returnUrl ||
+                    (ccData.completeMandate &&
+                      ccData.completeMandate.returnUrl),
+                  orderInformation: ccData.orderInformation,
+                  allowedPaymentTypes: ccData.allowedPaymentTypes,
+                };
+                this.logLine(
+                  "capture-ctx ORCH: " + JSON.stringify(ccOrch).slice(0, 1200),
+                );
+                // Also dump the top-level data keys so nothing is missed.
+                this.logLine(
+                  "capture-ctx data keys: " +
+                    JSON.stringify(Object.keys(ccData)),
+                );
+                // Full dump (truncated) in case the interesting field has an
+                // unexpected name.
+                this.logLine(
+                  "capture-ctx FULL: " + JSON.stringify(ccData).slice(0, 2000),
+                );
+              } catch (e) {
+                this.logLine("capture-ctx decode failed: " + e.message);
+              }
+              // -----------------------------------------------------------
+
               this.loadingMessage = "Loading payment SDK…";
               await this.loadSdk(
                 data.clientLibrary,
@@ -491,6 +585,10 @@
               this.loading = false;
               this.logLine("rendering payment selection");
 
+              // Resolves when the customer submits their card inside the
+              // SDK iframe. That click belongs to the iframe — the parent
+              // window holds no activation at this point, which is exactly
+              // why we do NOT chain complete() onto it.
               const transientToken = await up.show({
                 containers: {
                   paymentSelection: "#payment-selection-container",
@@ -502,6 +600,13 @@
               window.BaePay.transientToken = transientToken;
               this.logLine("transient token captured");
 
+              // Inspect which payment method was actually used before
+              // deciding whether to require the manual tap. The pop-up
+              // timing fix (Issue 2) only applies to manually entered
+              // cards, where the SDK opens a 3DS window after show()
+              // resolves. Apple Pay (and likely Click to Pay) already
+              // carries a strong native user gesture from Face ID / Touch
+              // ID / device recognition and shouldn't need this extra tap.
               const decodedToken = this.decodeJwt(transientToken);
               const paymentInfo = decodedToken?.paymentInformation || {};
               this.logLine(
@@ -509,19 +614,41 @@
                   JSON.stringify(Object.keys(paymentInfo)),
               );
 
-              const isManualCard = Object.prototype.hasOwnProperty.call(
-                paymentInfo,
-                "card",
+              // Positively identify a wallet payment (Apple Pay / Google Pay /
+              // Click to Pay), which carries its own native gesture and does
+              // NOT need the manual tap. Everything else on iOS — including a
+              // token whose paymentInformation is empty, which is what we saw
+              // in the field — must take the manual-tap path, because
+              // auto-firing complete() via $nextTick loses the user gesture
+              // and iOS then refuses the 3DS pop-up ("User cancelled").
+              const walletKeys = [
+                "fluidData",
+                "applePay",
+                "googlePay",
+                "tokenizedCard",
+              ];
+              const isWallet = walletKeys.some((k) =>
+                Object.prototype.hasOwnProperty.call(paymentInfo, k),
               );
+              const isDesktop = !IS_IOS;
 
-              if ((IS_IOS && isManualCard) || this.forceManualConfirm) {
+              if (isDesktop || isWallet) {
+                // Desktop (inline 3DS, no pop-up problem) or a wallet payment
+                // with its own gesture: safe to auto-confirm.
                 this.phase = "armed";
                 this.logLine(
-                  "awaiting top-level tap before complete() (card on iOS)",
+                  "auto-confirm (" + (isDesktop ? "desktop" : "wallet") + ")",
                 );
-              } else {
-                this.phase = "armed";
                 this.$nextTick(() => window.BaePay.confirmTap());
+              } else {
+                // iOS + anything that isn't a positively-identified wallet:
+                // REQUIRE a real top-level tap so the gesture is alive when
+                // the SDK opens the 3DS window. This is the path a manually
+                // entered card must take on mobile.
+                this.phase = "armed";
+                this.logLine(
+                  "awaiting top-level tap before complete() (iOS, non-wallet)",
+                );
               }
             } catch (err) {
               this.fail(err.message);
@@ -549,6 +676,7 @@
               script.onerror = () =>
                 reject(new Error("SDK failed to load: " + url));
               script.onload = () => {
+                // Poll instead of a fixed 200ms guess.
                 let tries = 0;
                 const tick = () => {
                   if (typeof window.Accept === "function") return resolve();
@@ -569,6 +697,7 @@
             this.loadingMessage = "Verifying with your bank…";
             this.logLine("complete() invoked");
 
+            // Issue 3 safety net: if nothing comes back, offer recovery.
             clearTimeout(this.stallTimer);
             this.stallTimer = setTimeout(() => {
               if (this.phase === "completing") {
@@ -585,24 +714,14 @@
             this.logLine("complete() resolved");
 
             const decoded = this.decodeJwt(result);
-            const rawStatus = decoded.status || decoded.outcome || "";
-            const status = String(rawStatus).trim().toUpperCase();
+            const status = decoded.status || decoded.outcome;
 
-            this.logLine("resolved status: " + status);
-
-            // ===============================================================
-            // FLAWED LOGIC INJECTION
-            // This replicates the developer's false-negative bug by strictly
-            // requiring 'COMPLETED'. It will evaluate to false for valid
-            // states like 'AUTHORIZED' or 'SUCCESS'.
-            // ===============================================================
-            if (status === "COMPLETED") {
-              this.logLine("authentication success: " + status);
+            if (status === "AUTHORIZED") {
+              this.logLine("auto-authorised, no capture call needed");
               window.BaePay.settled = true;
-              return this.showSuccess("Paid");
-            } else {
-              this.fail("Payment failed locally (status mismatch). Actual status from bank: " + status);
+              return this.showSuccess("Authorised");
             }
+            this.charge(result);
           },
 
           onCompleteRejected(err) {
@@ -611,6 +730,8 @@
               (err && (err.message || err.reason || err.code)) || String(err);
             this.logLine("complete() rejected: " + msg);
 
+            // COMPLETE_AUTHENTICATION_FAILED after a real OTP is usually a
+            // lost postMessage, not a real decline. Ask the server.
             this.loading = false;
             this.phase = "stalled";
             this.pollStatus(0);
