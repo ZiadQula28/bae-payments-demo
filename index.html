@@ -275,11 +275,7 @@
         // ("" / about:blank) open but allow opening a real URL from a live
         // gesture. Fall back to blank. 3ds-bridge.html may 404 harmlessly —
         // the SDK's URL replaces it immediately.
-        const openTargets = [
-          window.location.origin + "/3ds-bridge.html",
-          "",
-          "about:blank",
-        ];
+        const openTargets = [window.location.origin + "/3ds-bridge.html", "", "about:blank"];
         for (const target of openTargets) {
           try {
             placeholder = original.call(window, target, "_blank");
@@ -364,10 +360,20 @@
           const app = this.app;
           if (!this.up || !this.transientToken) return;
 
+          // DIAGNOSTIC TOGGLE: add ?noshim=1 to the URL to completely
+          // disable the pop-up shim and let the SDK handle 3DS its own way.
+          // Used to isolate whether the shim causes the Chrome-iOS failure:
+          // if it fails identically with the shim off, the shim is innocent
+          // and the problem is the SDK/config flow, not our frontend.
+          const shimDisabled =
+            new URLSearchParams(window.location.search).get("noshim") === "1";
+
           // 1. Pre-open the window while the tap grant is still alive.
-          const shim = IS_IOS
-            ? installOpenShim((m) => app.logLine(m))
-            : { active: false, restore() {} };
+          const shim =
+            IS_IOS && !shimDisabled
+              ? installOpenShim((m) => app.logLine(m))
+              : { active: false, restore() {} };
+          if (shimDisabled) app.logLine("shim: DISABLED via ?noshim=1");
           app.diag.shim = shim.active ? "armed" : "not needed";
 
           // 2. up.complete() must be the FIRST thing after the shim.
@@ -543,8 +549,7 @@
                   {};
                 // Pull the fields that matter for 3DS routing, if present.
                 const ccOrch = {
-                  clientVersion:
-                    ccData.clientVersion || ccDecoded.clientVersion,
+                  clientVersion: ccData.clientVersion || ccDecoded.clientVersion,
                   completeMandate: ccData.completeMandate,
                   deviceChannel: ccData.deviceChannel,
                   returnUrl:
@@ -621,12 +626,7 @@
               // in the field — must take the manual-tap path, because
               // auto-firing complete() via $nextTick loses the user gesture
               // and iOS then refuses the 3DS pop-up ("User cancelled").
-              const walletKeys = [
-                "fluidData",
-                "applePay",
-                "googlePay",
-                "tokenizedCard",
-              ];
+              const walletKeys = ["fluidData", "applePay", "googlePay", "tokenizedCard"];
               const isWallet = walletKeys.some((k) =>
                 Object.prototype.hasOwnProperty.call(paymentInfo, k),
               );
