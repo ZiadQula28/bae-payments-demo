@@ -19,10 +19,10 @@
 
         <div class="flex items-center gap-3">
           <button
-            @click="environment = environment === 'prod' ? 'dev' : 'prod'"
+            @click="environment = environment === 'prod' ? 'dev' : environment === 'dev' ? 'cybersource' : 'prod'"
             class="px-3 py-1.5 rounded-full text-[11px] font-bold tracking-widest text-white"
-            :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
-            x-text="environment.toUpperCase()"
+            :class="environment === 'prod' ? 'bg-green-600' : environment === 'dev' ? 'bg-blue-600' : 'bg-purple-600'"
+            x-text="environment === 'cybersource' ? 'CYBS' : environment.toUpperCase()"
           ></button>
           <button
             @click="currency = currency === 'JOD' ? 'USD' : 'JOD'"
@@ -125,8 +125,8 @@
             <h2 class="text-2xl font-black">Secure checkout</h2>
             <span
               class="text-[10px] font-bold px-2 py-1 rounded tracking-widest text-white"
-              :class="environment === 'prod' ? 'bg-green-600' : 'bg-blue-600'"
-              x-text="environment.toUpperCase()"
+              :class="environment === 'prod' ? 'bg-green-600' : environment === 'dev' ? 'bg-blue-600' : 'bg-purple-600'"
+              x-text="environment === 'cybersource' ? 'CYBS' : environment.toUpperCase()"
             ></span>
           </div>
 
@@ -262,39 +262,14 @@
         let placeholder = null;
         let consumed = false;
 
-        // navigator.userActivation tells us whether a gesture is actually
-        // live right now. If it isn't, no window.open call can succeed and
-        // the real fix is redirect-based 3DS — log that distinctly.
-        const activation =
-          typeof navigator !== "undefined" && navigator.userActivation
-            ? navigator.userActivation.isActive
-            : "unknown";
-        logger("shim: userActivation.isActive = " + activation);
-
-        // Try a real same-origin URL first: some iOS builds refuse a blank
-        // ("" / about:blank) open but allow opening a real URL from a live
-        // gesture. Fall back to blank. 3ds-bridge.html may 404 harmlessly —
-        // the SDK's URL replaces it immediately.
-        const openTargets = [window.location.origin + "/3ds-bridge.html", "", "about:blank"];
-        for (const target of openTargets) {
-          try {
-            placeholder = original.call(window, target, "_blank");
-          } catch (e) {
-            placeholder = null;
-          }
-          if (placeholder && !placeholder.closed) {
-            logger("shim: opened via " + (target || "(blank)"));
-            break;
-          }
+        try {
+          placeholder = original.call(window, "", "_blank");
+        } catch (e) {
+          placeholder = null;
         }
 
         if (!placeholder || placeholder.closed) {
-          logger(
-            "shim: browser refused the pre-opened window" +
-              (activation === false
-                ? " — NO live user gesture (needs redirect-based 3DS)"
-                : " — gesture present but open blocked"),
-          );
+          logger("shim: browser refused the pre-opened window");
           return { active: false, restore() {} };
         }
 
@@ -360,20 +335,10 @@
           const app = this.app;
           if (!this.up || !this.transientToken) return;
 
-          // DIAGNOSTIC TOGGLE: add ?noshim=1 to the URL to completely
-          // disable the pop-up shim and let the SDK handle 3DS its own way.
-          // Used to isolate whether the shim causes the Chrome-iOS failure:
-          // if it fails identically with the shim off, the shim is innocent
-          // and the problem is the SDK/config flow, not our frontend.
-          const shimDisabled =
-            new URLSearchParams(window.location.search).get("noshim") === "1";
-
           // 1. Pre-open the window while the tap grant is still alive.
-          const shim =
-            IS_IOS && !shimDisabled
-              ? installOpenShim((m) => app.logLine(m))
-              : { active: false, restore() {} };
-          if (shimDisabled) app.logLine("shim: DISABLED via ?noshim=1");
+          const shim = IS_IOS
+            ? installOpenShim((m) => app.logLine(m))
+            : { active: false, restore() {} };
           app.diag.shim = shim.active ? "armed" : "not needed";
 
           // 2. up.complete() must be the FIRST thing after the shim.
@@ -510,7 +475,12 @@
             document.getElementById("payment-screen-container").innerHTML = "";
 
             try {
-              const res = await fetch(this.PROXY + "/capture-context", {
+              // Direct-to-CyberSource mode uses a different route entirely.
+              const ccPath =
+                this.environment === "cybersource"
+                  ? "/cybs/capture-context"
+                  : "/capture-context";
+              const res = await fetch(this.PROXY + ccPath, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -533,49 +503,6 @@
                   "WARNING: worker has no KV binding, recovery is unreliable",
                 );
               }
-
-              // ---- CAPTURE-CONTEXT INSPECTOR ----------------------------
-              // Decode the JWT BAE's middleware returned and surface the 3DS
-              // orchestration parameters. This is what tells us whether the
-              // flow is configured for embedded (postMessage) or redirect
-              // (returnUrl) 3DS on mobile — the thing behind the failure.
-              try {
-                const ccDecoded = this.decodeJwt(data.token);
-                const ccData =
-                  (ccDecoded &&
-                    ccDecoded.ctx &&
-                    ccDecoded.ctx[0] &&
-                    ccDecoded.ctx[0].data) ||
-                  {};
-                // Pull the fields that matter for 3DS routing, if present.
-                const ccOrch = {
-                  clientVersion: ccData.clientVersion || ccDecoded.clientVersion,
-                  completeMandate: ccData.completeMandate,
-                  deviceChannel: ccData.deviceChannel,
-                  returnUrl:
-                    ccData.returnUrl ||
-                    (ccData.completeMandate &&
-                      ccData.completeMandate.returnUrl),
-                  orderInformation: ccData.orderInformation,
-                  allowedPaymentTypes: ccData.allowedPaymentTypes,
-                };
-                this.logLine(
-                  "capture-ctx ORCH: " + JSON.stringify(ccOrch).slice(0, 1200),
-                );
-                // Also dump the top-level data keys so nothing is missed.
-                this.logLine(
-                  "capture-ctx data keys: " +
-                    JSON.stringify(Object.keys(ccData)),
-                );
-                // Full dump (truncated) in case the interesting field has an
-                // unexpected name.
-                this.logLine(
-                  "capture-ctx FULL: " + JSON.stringify(ccData).slice(0, 2000),
-                );
-              } catch (e) {
-                this.logLine("capture-ctx decode failed: " + e.message);
-              }
-              // -----------------------------------------------------------
 
               this.loadingMessage = "Loading payment SDK…";
               await this.loadSdk(
@@ -619,36 +546,24 @@
                   JSON.stringify(Object.keys(paymentInfo)),
               );
 
-              // Positively identify a wallet payment (Apple Pay / Google Pay /
-              // Click to Pay), which carries its own native gesture and does
-              // NOT need the manual tap. Everything else on iOS — including a
-              // token whose paymentInformation is empty, which is what we saw
-              // in the field — must take the manual-tap path, because
-              // auto-firing complete() via $nextTick loses the user gesture
-              // and iOS then refuses the 3DS pop-up ("User cancelled").
-              const walletKeys = ["fluidData", "applePay", "googlePay", "tokenizedCard"];
-              const isWallet = walletKeys.some((k) =>
-                Object.prototype.hasOwnProperty.call(paymentInfo, k),
+              const isManualCard = Object.prototype.hasOwnProperty.call(
+                paymentInfo,
+                "card",
               );
-              const isDesktop = !IS_IOS;
 
-              if (isDesktop || isWallet) {
-                // Desktop (inline 3DS, no pop-up problem) or a wallet payment
-                // with its own gesture: safe to auto-confirm.
+              if ((IS_IOS && isManualCard) || this.forceManualConfirm) {
+                // Ask for one real tap in the top-level document — needed
+                // for manually entered cards on iOS, where WebKit's pop-up
+                // grant expires before the SDK's own window.open() fires.
                 this.phase = "armed";
                 this.logLine(
-                  "auto-confirm (" + (isDesktop ? "desktop" : "wallet") + ")",
+                  "awaiting top-level tap before complete() (card on iOS)",
                 );
-                this.$nextTick(() => window.BaePay.confirmTap());
               } else {
-                // iOS + anything that isn't a positively-identified wallet:
-                // REQUIRE a real top-level tap so the gesture is alive when
-                // the SDK opens the 3DS window. This is the path a manually
-                // entered card must take on mobile.
+                // Apple Pay, Click to Pay, or desktop: no pop-up timing
+                // issue, auto-confirm as before.
                 this.phase = "armed";
-                this.logLine(
-                  "awaiting top-level tap before complete() (iOS, non-wallet)",
-                );
+                this.$nextTick(() => window.BaePay.confirmTap());
               }
             } catch (err) {
               this.fail(err.message);
@@ -744,6 +659,31 @@
             this.loadingMessage = "Completing payment…";
             document.getElementById("payment-selection-container").innerHTML =
               "";
+
+            // Direct mode uses completeMandate CAPTURE, so up.complete() has
+            // already authorised and captured. Nothing left to charge — just
+            // record the outcome and index the transaction id.
+            if (this.environment === "cybersource") {
+              try {
+                const res = await fetch(this.PROXY + "/cybs/result", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    reference: this.reference,
+                    result: completeResult,
+                  }),
+                });
+                const data = await res.json();
+                this.logLine(
+                  "cybs result recorded · txn " + (data.transactionId || "n/a"),
+                );
+                window.BaePay.settled = true;
+                return this.showSuccess("Paid");
+              } catch (err) {
+                this.fail("Result recording failed: " + err.message);
+                return;
+              }
+            }
 
             try {
               const res = await fetch(this.PROXY + "/process-payment", {
