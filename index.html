@@ -635,8 +635,8 @@
               this.logLine("auto-authorised, no capture call needed");
               window.BaePay.settled = true;
               return this.showSuccess("Authorised");
+              this.charge(result);
             }
-            this.charge(result);
           },
 
           onCompleteRejected(err) {
