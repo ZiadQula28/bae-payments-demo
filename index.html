@@ -498,6 +498,11 @@
               this.reference = data.reference;
               window.BaePay.reference = data.reference;
               this.logLine("capture context received · ref " + data.reference);
+              // ---- RAW JWT ----------------------------------------------------
+              console.log("=== CAPTURE CONTEXT JWT (raw, undecoded) ===");
+              console.log(data.token);
+              console.log("=== END JWT · length " + (data.token || "").length + " ===");
+              // -----------------------------------------------------------------
               if (data.storage === "memory") {
                 this.logLine(
                   "WARNING: worker has no KV binding, recovery is unreliable",
