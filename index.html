@@ -138,6 +138,55 @@
             ></span>
           </div>
 
+          <!--
+            JWT EXTRACTION BAR
+            Appears as soon as the capture context arrives. The console folds
+            multi-kilobyte single-line strings and the SDK's own logging
+            scrolls them away, so the token is surfaced here instead.
+          -->
+          <div
+            x-show="captureContext"
+            style="display: none"
+            class="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3"
+          >
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="text-xs">
+                <p class="font-bold text-amber-900">Capture context JWT</p>
+                <p class="text-amber-700 font-mono break-all">
+                  <span x-text="captureContext ? captureContext.length : 0"></span>
+                  chars · <span x-text="jwtMerchantLabel"></span>
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  @click="copyJwt()"
+                  class="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-bold"
+                >
+                  Copy JWT
+                </button>
+                <button
+                  @click="downloadJwt()"
+                  class="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-bold"
+                >
+                  Download .txt
+                </button>
+                <button
+                  @click="showJwt = !showJwt"
+                  class="px-3 py-1.5 rounded-lg border border-amber-400 text-amber-900 text-xs font-bold"
+                  x-text="showJwt ? 'Hide' : 'Show'"
+                ></button>
+              </div>
+            </div>
+            <textarea
+              x-show="showJwt"
+              style="display: none"
+              readonly
+              @click="$event.target.select()"
+              class="mt-3 w-full h-32 p-2 rounded-lg border border-amber-300 font-mono text-[10px] bg-white"
+              x-text="captureContext"
+            ></textarea>
+          </div>
+
           <div
             class="relative min-h-[320px] border border-gray-200 rounded-2xl bg-gray-50 p-3"
           >
@@ -217,6 +266,8 @@
             <dd class="font-mono break-all" x-text="reference || '—'"></dd>
             <dt class="text-gray-500">Phase</dt>
             <dd class="font-mono" x-text="phase"></dd>
+            <dt class="text-gray-500">Theme keys in JWT</dt>
+            <dd class="font-mono break-all" x-text="diag.theme"></dd>
           </dl>
           <div
             class="bg-gray-900 text-gray-100 rounded-xl p-3 max-h-64 overflow-auto font-mono text-[11px] leading-relaxed"
@@ -326,6 +377,7 @@
       window.BaePay = {
         up: null,
         transientToken: null,
+        captureContext: null,
         reference: null,
         settled: false,
         app: null,
@@ -391,9 +443,18 @@
           reference: null,
           log: [],
           t0: Date.now(),
-          diag: { engine: IS_IOS ? "WebKit / iOS" : "non-iOS", shim: "idle" },
+          diag: {
+            engine: IS_IOS ? "WebKit / iOS" : "non-iOS",
+            shim: "idle",
+            theme: "—",
+          },
           pollTimer: null,
           stallTimer: null,
+
+          /* ---- JWT extraction state ---- */
+          captureContext: null,
+          showJwt: false,
+          jwtMerchantLabel: "—",
 
           products: [
             { id: 1, name: "Basic", price: 0.1, desc: "Entry tier." },
@@ -448,6 +509,100 @@
             navigator.clipboard.writeText(text);
           },
 
+          /* ================================================================
+           * JWT extraction
+           * ============================================================== */
+
+          /**
+           * Called the moment the capture context lands, before anything
+           * downstream can throw. Stores the raw token in Alpine state, on
+           * window.BaePay, and in the console, then reports what the payload
+           * actually contains — merchant identity and any styling keys.
+           */
+          captureJwt(token) {
+            this.captureContext = token || null;
+            window.BaePay.captureContext = token || null;
+
+            if (!token) {
+              this.logLine("WARNING: response had no token field");
+              this.diag.theme = "no token";
+              return;
+            }
+
+            // Console copy. Chrome folds very long single-line strings, so
+            // the markers make it obvious where the value starts and ends.
+            console.log("=== CAPTURE CONTEXT JWT (raw, undecoded) ===");
+            console.log(token);
+            console.log("=== END JWT · length " + token.length + " ===");
+            console.log(
+              "Tip: run  copy(BaePay.captureContext)  to put it on the clipboard.",
+            );
+
+            const decoded = this.decodeJwt(token);
+            const data =
+              (decoded && decoded.ctx && decoded.ctx[0] && decoded.ctx[0].data) ||
+              {};
+
+            // Merchant identity — compare this against the MID you published
+            // Look & Feel from in the Business Center.
+            this.jwtMerchantLabel =
+              decoded.iss ||
+              decoded.merchantId ||
+              data.merchantId ||
+              decoded.orgId ||
+              decoded.organizationId ||
+              "issuer unknown";
+
+            this.logLine(
+              "JWT top-level keys: " + JSON.stringify(Object.keys(decoded)),
+            );
+            this.logLine(
+              "JWT ctx[0].data keys: " + JSON.stringify(Object.keys(data)),
+            );
+            this.logLine("JWT issuer/merchant: " + this.jwtMerchantLabel);
+
+            // Match loosely: styling key names have moved between SDK
+            // versions, so don't assume one spelling.
+            const themeKeys = Object.keys(data).filter((k) =>
+              /theme|style|brand|colou?r|font|button|look|feel/i.test(k),
+            );
+            this.diag.theme = themeKeys.length ? themeKeys.join(", ") : "ABSENT";
+            this.logLine("theme-ish keys in JWT: " + this.diag.theme);
+
+            if (data.clientVersion) {
+              this.logLine("clientVersion pinned: " + data.clientVersion);
+            }
+          },
+
+          copyJwt() {
+            if (!this.captureContext) return;
+            navigator.clipboard
+              .writeText(this.captureContext)
+              .then(() => this.logLine("JWT copied to clipboard"))
+              .catch(() =>
+                this.logLine("clipboard blocked — use Download instead"),
+              );
+          },
+
+          downloadJwt() {
+            if (!this.captureContext) return;
+            const blob = new Blob([this.captureContext], {
+              type: "text/plain",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download =
+              "capture-context-" + this.environment + "-" + Date.now() + ".txt";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            this.logLine("JWT downloaded");
+          },
+
+          /* ============================================================ */
+
           addToCart(product) {
             const price = product.isCustom
               ? parseFloat(this.customAmount)
@@ -470,6 +625,10 @@
             this.phase = "rendering";
             this.loading = true;
             this.loadingMessage = "Requesting checkout session…";
+            this.captureContext = null;
+            this.showJwt = false;
+            this.jwtMerchantLabel = "—";
+            this.diag.theme = "—";
             document.getElementById("payment-selection-container").innerHTML =
               "";
             document.getElementById("payment-screen-container").innerHTML = "";
@@ -498,11 +657,11 @@
               this.reference = data.reference;
               window.BaePay.reference = data.reference;
               this.logLine("capture context received · ref " + data.reference);
-              // ---- RAW JWT ----------------------------------------------------
-              console.log("=== CAPTURE CONTEXT JWT (raw, undecoded) ===");
-              console.log(data.token);
-              console.log("=== END JWT · length " + (data.token || "").length + " ===");
-              // -----------------------------------------------------------------
+
+              // ---- RAW JWT: surface it before anything can throw --------
+              this.captureJwt(data.token);
+              // -----------------------------------------------------------
+
               if (data.storage === "memory") {
                 this.logLine(
                   "WARNING: worker has no KV binding, recovery is unreliable",
